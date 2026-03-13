@@ -1,2 +1,2 @@
 # metaheuristics-gadget
-small interactive tools for learning evolutionary multiobjective optimization
+Small interactive tools for learning metaheuristics
