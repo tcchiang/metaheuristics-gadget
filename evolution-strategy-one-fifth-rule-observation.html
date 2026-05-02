@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Progress Rate & Success Rate on 2-D Sphere</title>
+<style>
+  :root{
+    --bg:#f7f7fb; --panel:#ffffff; --ink:#1f2937; --muted:#6b7280;
+    --blue:#2563eb; --red:#dc2626; --green:#16a34a; --gray:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px;display:grid;grid-template-columns:320px 1fr;gap:18px;}
+  header{grid-column:1/-1}
+  h1{font-size:24px;margin:0 0 6px}
+  .sub{color:var(--muted);line-height:1.5}
+  .panel{background:var(--panel);border:1px solid var(--gray);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.06);padding:16px;}
+  label{display:block;font-weight:700;margin-top:14px;margin-bottom:6px}
+  input[type="number"],input[type="range"]{width:100%}
+  input[type="number"]{padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:16px;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  button{border:0;border-radius:12px;padding:11px 12px;font-weight:800;cursor:pointer;background:var(--blue);color:white;font-size:15px;}
+  button.secondary{background:#374151}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;}
+  .stat{background:#f9fafb;border:1px solid var(--gray);border-radius:14px;padding:12px;}
+  .stat .k{font-size:13px;color:var(--muted)}
+  .stat .v{font-size:22px;font-weight:900;margin-top:4px}
+  .formula{margin-top:14px;padding:12px;background:#f9fafb;border-radius:12px;color:#374151;line-height:1.6;font-size:14px;}
+  canvas{width:100%;height:auto;display:block;background:white;border-radius:16px;border:1px solid var(--gray);}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;color:var(--muted);font-size:14px}
+  .dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px}
+  .blue{background:var(--blue)} .green{background:var(--green)} .red{background:var(--red)} .black{background:#111827}
+  @media(max-width:820px){.wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>2-D Sphere 上的 Progress Rate 與 Successful Rate</h1>
+    <div class="sub">目標函數：f(x₁,x₂)=x₁²+x₂²，最佳解在 (0,0)。在目前 solution 周圍用 Gaussian mutation 取樣 100 個 offspring。</div>
+  </header>
+
+  <section class="panel">
+    <div class="row">
+      <div><label>x₁</label><input id="x1" type="number" value="3" step="0.1"></div>
+      <div><label>x₂</label><input id="x2" type="number" value="2" step="0.1"></div>
+    </div>
+    <label>Step size σ：<span id="sigmaLabel">0.80</span></label>
+    <input id="sigma" type="range" min="0.05" max="4" step="0.05" value="0.8">
+    <label>隨機種子</label>
+    <input id="seed" type="number" value="42" step="1">
+    <div class="btns">
+      <button id="sampleBtn">重新取樣</button>
+      <button id="resetBtn" class="secondary">重設</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">Progress rate φ = mean(Δr)</div><div class="v" id="progressRate">-</div></div>
+      <div class="stat"><div class="k">Successful rate</div><div class="v" id="successRate">-</div></div>
+      <div class="stat"><div class="k">目前距離 r</div><div class="v" id="currentR">-</div></div>
+      <div class="stat"><div class="k">成功 offspring 數</div><div class="v" id="successCount">-</div></div>
+    </div>
+    <div class="formula">
+      mutation：y = x + σN(0,I)<br>
+      r = ||x||，r' = ||y||<br>
+      Δr = r - r'<br>
+      progress rate：φ = E[Δr] ≈ average of 100 samples<br>
+      successful rate：Pr(f(y)&lt;f(x)) ≈ 成功樣本比例
+    </div>
+  </section>
+
+  <section>
+    <canvas id="canvas" width="820" height="820"></canvas>
+    <div class="legend">
+      <span><span class="dot black"></span>optimum</span>
+      <span><span class="dot blue"></span>current solution</span>
+      <span><span class="dot green"></span>successful mutation</span>
+      <span><span class="dot red"></span>failed mutation</span>
+    </div>
+  </section>
+</div>
+
+<script>
+class RNG {
+  constructor(seed){ this.seed = seed >>> 0; }
+  next(){ this.seed = (1664525 * this.seed + 1013904223) >>> 0; return this.seed / 4294967296; }
+  normal(){
+    let u = 0, v = 0;
+    while(u === 0) u = this.next();
+    while(v === 0) v = this.next();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+}
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const x1El = document.getElementById("x1");
+const x2El = document.getElementById("x2");
+const sigmaEl = document.getElementById("sigma");
+const seedEl = document.getElementById("seed");
+
+let samples = [];
+
+function val(el){ return Number(el.value); }
+function sphere(x,y){ return x*x + y*y; }
+function radius(x,y){ return Math.sqrt(sphere(x,y)); }
+function worldLimit(x, y, sigma){ return Math.max(5, Math.ceil(Math.max(Math.abs(x), Math.abs(y)) + 4*sigma)); }
+function toCanvas(x, y, L){
+  const pad = 50;
+  const s = (canvas.width - 2*pad) / (2*L);
+  return [canvas.width/2 + x*s, canvas.height/2 - y*s];
+}
+function drawArrow(xa, ya, xb, yb, color, width=2){
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=width;
+  ctx.beginPath(); ctx.moveTo(xa,ya); ctx.lineTo(xb,yb); ctx.stroke();
+  const ang = Math.atan2(yb-ya, xb-xa), len = 12;
+  ctx.beginPath();
+  ctx.moveTo(xb,yb);
+  ctx.lineTo(xb-len*Math.cos(ang-Math.PI/6), yb-len*Math.sin(ang-Math.PI/6));
+  ctx.lineTo(xb-len*Math.cos(ang+Math.PI/6), yb-len*Math.sin(ang+Math.PI/6));
+  ctx.closePath(); ctx.fill();
+}
+function makeSamples(){
+  const x = val(x1El), y = val(x2El), sigma = val(sigmaEl);
+  const rng = new RNG(val(seedEl));
+  const r0 = radius(x,y), f0 = sphere(x,y);
+  samples = [];
+  for(let i=0;i<100;i++){
+    const ox = x + sigma * rng.normal();
+    const oy = y + sigma * rng.normal();
+    const r1 = radius(ox,oy);
+    const f1 = sphere(ox,oy);
+    samples.push({x:ox,y:oy,dr:r0-r1,success:f1<f0});
+  }
+}
+function render(){
+  const x = val(x1El), y = val(x2El), sigma = val(sigmaEl);
+  document.getElementById("sigmaLabel").textContent = sigma.toFixed(2);
+  const L = worldLimit(x,y,sigma);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = "white"; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.lineWidth = 1;
+  for(let rr=1; rr<=L; rr++){
+    const [cx,cy] = toCanvas(0,0,L);
+    const [px,py] = toCanvas(rr,0,L);
+    const rad = Math.abs(px-cx);
+    ctx.strokeStyle = rr % 2 === 0 ? "#d1d5db" : "#e5e7eb";
+    ctx.beginPath(); ctx.arc(cx,cy,rad,0,2*Math.PI); ctx.stroke();
+  }
+
+  const [x0,y0] = toCanvas(0,0,L);
+  ctx.strokeStyle="#9ca3af"; ctx.lineWidth=1.2;
+  ctx.beginPath(); ctx.moveTo(20,y0); ctx.lineTo(canvas.width-20,y0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x0,20); ctx.lineTo(x0,canvas.height-20); ctx.stroke();
+
+  ctx.fillStyle="#6b7280"; ctx.font="16px system-ui";
+  ctx.fillText("x₁", canvas.width-34, y0-10);
+  ctx.fillText("x₂", x0+10, 30);
+  ctx.fillText("f(x₁,x₂)=x₁²+x₂²", 24, 32);
+
+  const [cx,cy] = toCanvas(x,y,L);
+  const [sx] = toCanvas(x+sigma,y,L);
+  ctx.strokeStyle="rgba(37,99,235,.25)";
+  ctx.setLineDash([6,6]);
+  ctx.beginPath(); ctx.arc(cx,cy,Math.abs(sx-cx),0,2*Math.PI); ctx.stroke();
+  ctx.setLineDash([]);
+
+  let sumDR = 0, ok = 0;
+  for(const p of samples){
+    sumDR += p.dr;
+    if(p.success) ok++;
+    const [px,py] = toCanvas(p.x,p.y,L);
+    ctx.fillStyle = p.success ? "rgba(22,163,74,.78)" : "rgba(220,38,38,.68)";
+    ctx.beginPath(); ctx.arc(px,py,4,0,2*Math.PI); ctx.fill();
+  }
+
+  const [ox,oy] = toCanvas(0,0,L);
+  ctx.fillStyle="#111827"; ctx.beginPath(); ctx.arc(ox,oy,7,0,2*Math.PI); ctx.fill();
+  ctx.fillStyle="#2563eb"; ctx.beginPath(); ctx.arc(cx,cy,9,0,2*Math.PI); ctx.fill();
+  ctx.strokeStyle="white"; ctx.lineWidth=2; ctx.stroke();
+  drawArrow(cx, cy, ox, oy, "#2563eb", 2.5);
+  ctx.fillStyle="#2563eb"; ctx.font="bold 15px system-ui";
+  ctx.fillText("r = ||x||", (cx+ox)/2+8, (cy+oy)/2-8);
+
+  const phi = sumDR / samples.length;
+  const sr = ok / samples.length;
+  document.getElementById("progressRate").textContent = phi.toFixed(4);
+  document.getElementById("successRate").textContent = (sr*100).toFixed(1) + "%";
+  document.getElementById("currentR").textContent = radius(x,y).toFixed(4);
+  document.getElementById("successCount").textContent = ok + " / 100";
+}
+function resampleAndRender(){ makeSamples(); render(); }
+document.getElementById("sampleBtn").addEventListener("click", () => {
+  seedEl.value = Number(seedEl.value) + 1;
+  resampleAndRender();
+});
+document.getElementById("resetBtn").addEventListener("click", () => {
+  x1El.value = 3; x2El.value = 2; sigmaEl.value = 0.8; seedEl.value = 42;
+  resampleAndRender();
+});
+[x1El,x2El,sigmaEl,seedEl].forEach(el => el.addEventListener("input", resampleAndRender));
+resampleAndRender();
+</script>
+</body>
+</html>

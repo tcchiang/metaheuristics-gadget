@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Santa Fe Trail GP 教學互動網頁</title>
+
+<style>
+:root {
+  --bg: #f6f4ec;
+  --panel: #ffffff;
+  --main: #3b5bdb;
+  --accent: #ff922b;
+  --food: #2f9e44;
+  --ant: #e03131;
+  --text: #222;
+  --muted: #666;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header {
+  padding: 16px;
+  background: linear-gradient(135deg, #3b5bdb, #5c7cfa);
+  color: white;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+header p {
+  margin: 6px 0 0;
+  font-size: 0.9rem;
+}
+
+main {
+  max-width: 1200px;
+  margin: auto;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 12px;
+  align-items: start;
+}
+
+@media (max-width: 850px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+}
+
+section {
+  min-width: 0;
+  background: var(--panel);
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+
+canvas {
+  width: 100%;
+  max-width: 620px;
+  aspect-ratio: 1 / 1;
+  display: block;
+  margin: auto;
+  background: #fffdf5;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--main);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #868e96;
+}
+
+button.orange {
+  background: var(--accent);
+}
+
+button.green {
+  background: #2f9e44;
+}
+
+button.red {
+  background: #e03131;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+label {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+input, textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: 4px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-family: inherit;
+}
+
+textarea {
+  min-height: 135px;
+  font-family: Consolas, monospace;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.speed-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.speed-row span {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.speed-row input {
+  flex: 1;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+@media (max-width: 520px) {
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.stat {
+  background: #f1f3f5;
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+}
+
+.stat strong {
+  display: block;
+  font-size: 1.15rem;
+  color: var(--main);
+}
+
+.note {
+  background: #fff3bf;
+  border-left: 5px solid #fab005;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+pre {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 10px;
+  overflow-x: hidden;
+  font-size: 0.85rem;
+}
+
+#evoResult {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+#log {
+  height: 160px;
+  overflow-y: auto;
+  background: #212529;
+  color: #d3f9d8;
+  padding: 10px;
+  border-radius: 10px;
+  font-family: Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+#treeView {
+  font-family: Consolas, monospace;
+  font-size: 0.85rem;
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 10px;
+  max-height: 260px;
+  overflow: auto;
+  line-height: 1.55;
+}
+
+.tree-node {
+  border-radius: 6px;
+  padding: 1px 4px;
+}
+
+.tree-current {
+  background: #ffd43b;
+  font-weight: bold;
+}
+
+.small {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Santa Fe Trail：Genetic Programming 螞蟻教學實驗室</h1>
+  <p>觀察 GP 程式如何控制螞蟻在 32×32 格子中尋找食物</p>
+</header>
+
+<main>
+
+<section>
+  <h2>🐜 Santa Fe Trail 地圖</h2>
+  <canvas id="trailCanvas" width="640" height="640"></canvas>
+
+  <div class="stats">
+    <div class="stat"><span>已吃食物</span><strong id="foodCount">0</strong></div>
+    <div class="stat"><span>步數</span><strong id="stepCount">0</strong></div>
+    <div class="stat"><span>Fitness</span><strong id="fitnessCount">0</strong></div>
+    <div class="stat"><span>目前動作</span><strong id="currentAction">-</strong></div>
+  </div>
+
+  <div class="controls">
+    <button onclick="resetRun()">重置</button>
+    <button class="green" onclick="stepRun()">單步</button>
+    <button class="orange" onclick="togglePlay()">播放 / 暫停</button>
+    <button class="secondary" onclick="runToEnd()">直接跑完</button>
+  </div>
+
+  <label>動畫速度</label>
+  <div class="speed-row">
+    <span>慢</span>
+    <input id="speed" type="range" min="20" max="500" value="120" />
+    <span>快</span>
+  </div>
+
+  <p class="small">
+    綠色圓點：食物；黃色格子：螞蟻走過；紅色三角形：螞蟻與朝向。標準 Santa Fe Trail 共有 89 個食物。
+  </p>
+</section>
+
+<section>
+  <h2>🧬 GP 控制程式</h2>
+
+  <div class="note">
+    支援指令：<code>MOVE</code>, <code>LEFT</code>, <code>RIGHT</code>, 
+    <code>IF_FOOD_AHEAD(a,b)</code>, <code>PROGN2(a,b)</code>, <code>PROGN3(a,b,c)</code>。
+  </div>
+
+  <textarea id="programText">IF_FOOD_AHEAD(
+  MOVE,
+  PROGN3(
+    LEFT,
+    IF_FOOD_AHEAD(MOVE, RIGHT),
+    MOVE
+  )
+)</textarea>
+
+  <div class="controls">
+    <button onclick="applyProgram()">套用程式</button>
+    <button class="secondary" onclick="loadGoodProgram()">載入示範策略</button>
+    <button class="red" onclick="loadBadProgram()">載入壞策略</button>
+  </div>
+
+  <h2 style="margin-top:16px;">🌳 GP Tree（執行高亮）</h2>
+  <div id="treeView"></div>
+
+  <h2 style="margin-top:16px;">📘 目前執行紀錄</h2>
+  <div id="log"></div>
+</section>
+
+<section>
+  <h2>📈 簡易演化實驗</h2>
+
+  <label>Population Size</label>
+  <input id="popSize" type="number" value="30" min="4" max="200" />
+
+  <label>Generations</label>
+  <input id="generations" type="number" value="20" min="1" max="200" />
+
+  <label>Mutation Rate</label>
+  <input id="mutationRate" type="number" value="0.25" min="0" max="1" step="0.05" />
+
+  <label>Random Seed</label>
+  <input id="seedInput" type="number" value="41" />
+
+  <div class="controls">
+    <button class="green" onclick="runEvolution()">開始簡易 GP 演化</button>
+  </div>
+
+  <pre id="evoResult">尚未執行。</pre>
+</section>
+
+<section>
+  <h2>🧠 教學說明</h2>
+  <p>
+    Santa Fe Trail 是 Genetic Programming 的經典 benchmark。螞蟻只能觀察前方一格是否有食物，
+    並透過演化得到的程式控制 MOVE、LEFT、RIGHT 等行為。
+  </p>
+  <p>
+    此版本使用 32×32 toroidal grid、89 個食物、600 steps limit。
+  </p>
+</section>
+
+</main>
+
+<script>
+const N = 32;
+const MAX_STEPS = 600;
+const canvas = document.getElementById("trailCanvas");
+const ctx = canvas.getContext("2d");
+
+let foodSet = new Set();
+let eatenSet = new Set();
+let visitedSet = new Set();
+
+let ant = { x: 0, y: 0, dir: 1 };
+let steps = 0;
+let playing = false;
+let timer = null;
+let currentProgram = null;
+
+let execStack = [];
+let nodeCounter = 0;
+let currentNodeId = null;
+
+function makeKey(x, y) {
+  return x + "," + y;
+}
+
+function torus(v) {
+  return (v + N) % N;
+}
+
+function frontCell() {
+  let dx = [0, 1, 0, -1][ant.dir];
+  let dy = [-1, 0, 1, 0][ant.dir];
+  return { x: torus(ant.x + dx), y: torus(ant.y + dy) };
+}
+
+function initTrail() {
+  foodSet.clear();
+
+  const map_array = [
+    [1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0],
+    [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0],
+    [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0],
+    [0,0,0,1,1,1,1,0,0,1,1,1,1,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,1,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,1,1,1,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+    [0,0,0,1,1,0,0,1,1,1,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,1,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+  ];
+
+  for (let y = 0; y < map_array.length; y++) {
+    for (let x = 0; x < map_array[y].length; x++) {
+      if (map_array[y][x] === 1) {
+        foodSet.add(makeKey(x, y));
+      }
+    }
+  }
+}
+
+function resetRun() {
+  eatenSet.clear();
+  visitedSet.clear();
+
+  ant = { x: 0, y: 0, dir: 1 };
+  steps = 0;
+
+  playing = false;
+  clearInterval(timer);
+
+  nodeCounter = 0;
+  currentProgram = parseProgram(document.getElementById("programText").value);
+
+  execStack = [];
+  execStack.push(currentProgram);
+
+  currentNodeId = null;
+  document.getElementById("currentAction").textContent = "-";
+
+  logClear();
+  draw();
+  updateStats();
+  renderTree();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const cell = canvas.width / N;
+
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const k = makeKey(x, y);
+
+      if (visitedSet.has(k)) {
+        ctx.fillStyle = "#fff3bf";
+        ctx.fillRect(x * cell, y * cell, cell, cell);
+      }
+
+      ctx.strokeStyle = "#e9ecef";
+      ctx.strokeRect(x * cell, y * cell, cell, cell);
+
+      if (foodSet.has(k) && !eatenSet.has(k)) {
+        ctx.fillStyle = "#2f9e44";
+        ctx.beginPath();
+        ctx.arc(x * cell + cell / 2, y * cell + cell / 2, cell * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  drawAnt(cell);
+}
+
+function drawAnt(cell) {
+  const cx = ant.x * cell + cell / 2;
+  const cy = ant.y * cell + cell / 2;
+  const r = cell * 0.38;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(ant.dir * Math.PI / 2);
+  ctx.fillStyle = "#e03131";
+  ctx.beginPath();
+  ctx.moveTo(0, -r);
+  ctx.lineTo(r * 0.75, r);
+  ctx.lineTo(-r * 0.75, r);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function updateStats() {
+  document.getElementById("foodCount").textContent = eatenSet.size;
+  document.getElementById("stepCount").textContent = steps;
+  document.getElementById("fitnessCount").textContent = eatenSet.size;
+}
+
+function setCurrentAction(action) {
+  document.getElementById("currentAction").textContent = action;
+}
+
+function move() {
+  setCurrentAction("MOVE");
+
+  const f = frontCell();
+  ant.x = f.x;
+  ant.y = f.y;
+  visitedSet.add(makeKey(ant.x, ant.y));
+
+  const k = makeKey(ant.x, ant.y);
+
+  if (foodSet.has(k) && !eatenSet.has(k)) {
+    eatenSet.add(k);
+    log("MOVE：吃到食物！");
+  } else {
+    log("MOVE");
+  }
+
+  steps++;
+}
+
+function left() {
+  setCurrentAction("LEFT");
+  ant.dir = (ant.dir + 3) % 4;
+  steps++;
+  log("LEFT");
+}
+
+function right() {
+  setCurrentAction("RIGHT");
+  ant.dir = (ant.dir + 1) % 4;
+  steps++;
+  log("RIGHT");
+}
+
+function foodAhead() {
+  const f = frontCell();
+  return foodSet.has(makeKey(f.x, f.y)) && !eatenSet.has(makeKey(f.x, f.y));
+}
+
+function executeOnePrimitive() {
+  if (steps >= MAX_STEPS) return;
+
+  while (execStack.length > 0 && steps < MAX_STEPS) {
+    const node = execStack.pop();
+    currentNodeId = node.id;
+
+    if (node.type === "MOVE") {
+      move();
+      renderTree();
+      return;
+    }
+
+    if (node.type === "LEFT") {
+      left();
+      renderTree();
+      return;
+    }
+
+    if (node.type === "RIGHT") {
+      right();
+      renderTree();
+      return;
+    }
+
+    if (node.type === "IF") {
+      if (foodAhead()) execStack.push(node.a);
+      else execStack.push(node.b);
+    } else if (node.type === "PROGN2") {
+      execStack.push(node.b);
+      execStack.push(node.a);
+    } else if (node.type === "PROGN3") {
+      execStack.push(node.c);
+      execStack.push(node.b);
+      execStack.push(node.a);
+    }
+  }
+
+  if (execStack.length === 0 && steps < MAX_STEPS) {
+    execStack.push(currentProgram);
+  }
+}
+
+function stepRun() {
+  executeOnePrimitive();
+  draw();
+  updateStats();
+}
+
+function runToEnd() {
+  while (steps < MAX_STEPS) {
+    executeOnePrimitive();
+  }
+
+  draw();
+  updateStats();
+}
+
+function togglePlay() {
+  playing = !playing;
+  clearInterval(timer);
+
+  if (playing) {
+    const speedValue = Number(document.getElementById("speed").value);
+    const delay = 520 - speedValue;
+
+    timer = setInterval(() => {
+      if (steps >= MAX_STEPS) {
+        playing = false;
+        clearInterval(timer);
+        return;
+      }
+
+      stepRun();
+    }, delay);
+  }
+}
+
+function applyProgram() {
+  try {
+    resetRun();
+    log("程式已套用。");
+  } catch (e) {
+    alert("程式解析失敗：" + e.message);
+  }
+}
+
+function parseProgram(text) {
+  const cleaned = text
+    .replace(/\s+/g, "")
+    .replace(/IF_FOOD_AHEAD/g, "IF")
+    .replace(/PROGN2/g, "P2")
+    .replace(/PROGN3/g, "P3");
+
+  let i = 0;
+
+  function parseExpr() {
+    if (cleaned.startsWith("MOVE", i)) {
+      i += 4;
+      return { type: "MOVE", id: nodeCounter++ };
+    }
+
+    if (cleaned.startsWith("LEFT", i)) {
+      i += 4;
+      return { type: "LEFT", id: nodeCounter++ };
+    }
+
+    if (cleaned.startsWith("RIGHT", i)) {
+      i += 5;
+      return { type: "RIGHT", id: nodeCounter++ };
+    }
+
+    if (cleaned.startsWith("IF(", i)) {
+      i += 3;
+      const a = parseExpr();
+      expect(",");
+      const b = parseExpr();
+      expect(")");
+      return { type: "IF", a, b, id: nodeCounter++ };
+    }
+
+    if (cleaned.startsWith("P2(", i)) {
+      i += 3;
+      const a = parseExpr();
+      expect(",");
+      const b = parseExpr();
+      expect(")");
+      return { type: "PROGN2", a, b, id: nodeCounter++ };
+    }
+
+    if (cleaned.startsWith("P3(", i)) {
+      i += 3;
+      const a = parseExpr();
+      expect(",");
+      const b = parseExpr();
+      expect(",");
+      const c = parseExpr();
+      expect(")");
+      return { type: "PROGN3", a, b, c, id: nodeCounter++ };
+    }
+
+    throw new Error("無法解析位置 " + i + " 附近：" + cleaned.slice(i, i + 20));
+  }
+
+  function expect(ch) {
+    if (cleaned[i] !== ch) {
+      throw new Error("期待 '" + ch + "'，但看到 '" + cleaned[i] + "'");
+    }
+    i++;
+  }
+
+  const result = parseExpr();
+
+  if (i !== cleaned.length) {
+    throw new Error("程式尾端有無法解析的內容：" + cleaned.slice(i));
+  }
+
+  return result;
+}
+
+function renderTree() {
+  if (!currentProgram) return;
+  document.getElementById("treeView").innerHTML = renderNode(currentProgram, 0);
+}
+
+function renderNode(node, depth) {
+  const indent = "&nbsp;".repeat(depth * 4);
+
+  let label = node.type;
+  if (node.type === "IF") label = "IF_FOOD_AHEAD";
+
+  const cls = node.id === currentNodeId ? "tree-node tree-current" : "tree-node";
+
+  let html = `<div class="${cls}">${indent}${label}</div>`;
+
+  if (node.a) html += renderNode(node.a, depth + 1);
+  if (node.b) html += renderNode(node.b, depth + 1);
+  if (node.c) html += renderNode(node.c, depth + 1);
+
+  return html;
+}
+
+function loadGoodProgram() {
+  document.getElementById("programText").value =
+`IF_FOOD_AHEAD(
+  MOVE,
+  PROGN3(
+    RIGHT,
+    IF_FOOD_AHEAD(MOVE, LEFT),
+    PROGN2(LEFT, MOVE)
+  )
+)`;
+
+  applyProgram();
+}
+
+function loadBadProgram() {
+  document.getElementById("programText").value =
+`PROGN3(
+  LEFT,
+  LEFT,
+  MOVE
+)`;
+
+  applyProgram();
+}
+
+function log(msg) {
+  const el = document.getElementById("log");
+  el.innerHTML += msg + "<br>";
+  el.scrollTop = el.scrollHeight;
+}
+
+function logClear() {
+  document.getElementById("log").innerHTML = "";
+}
+
+// ---------- 簡易 GP Evolution ----------
+
+let rngSeed = 41;
+
+function rand() {
+  rngSeed = (rngSeed * 1664525 + 1013904223) >>> 0;
+  return rngSeed / 4294967296;
+}
+
+function choice(arr) {
+  return arr[Math.floor(rand() * arr.length)];
+}
+
+function randomTree(depth) {
+  if (depth <= 0 || rand() < 0.35) {
+    return { type: choice(["MOVE", "LEFT", "RIGHT"]) };
+  }
+
+  const t = choice(["IF", "PROGN2", "PROGN3"]);
+
+  if (t === "IF") {
+    return { type: "IF", a: randomTree(depth - 1), b: randomTree(depth - 1) };
+  }
+
+  if (t === "PROGN2") {
+    return { type: "PROGN2", a: randomTree(depth - 1), b: randomTree(depth - 1) };
+  }
+
+  return {
+    type: "PROGN3",
+    a: randomTree(depth - 1),
+    b: randomTree(depth - 1),
+    c: randomTree(depth - 1)
+  };
+}
+
+function cloneTree(t) {
+  return JSON.parse(JSON.stringify(t));
+}
+
+function mutateTree(t, rate, depth = 3) {
+  if (rand() < rate || depth <= 0) {
+    return randomTree(Math.max(1, depth));
+  }
+
+  let c = cloneTree(t);
+
+  if (c.a) c.a = mutateTree(c.a, rate, depth - 1);
+  if (c.b) c.b = mutateTree(c.b, rate, depth - 1);
+  if (c.c) c.c = mutateTree(c.c, rate, depth - 1);
+
+  return c;
+}
+
+function treeToText(t, indent = 0) {
+  const sp = "  ".repeat(indent);
+
+  if (t.type === "MOVE") return "MOVE";
+  if (t.type === "LEFT") return "LEFT";
+  if (t.type === "RIGHT") return "RIGHT";
+
+  if (t.type === "IF") {
+    return `IF_FOOD_AHEAD(
+${sp}  ${treeToText(t.a, indent + 1)},
+${sp}  ${treeToText(t.b, indent + 1)}
+${sp})`;
+  }
+
+  if (t.type === "PROGN2") {
+    return `PROGN2(
+${sp}  ${treeToText(t.a, indent + 1)},
+${sp}  ${treeToText(t.b, indent + 1)}
+${sp})`;
+  }
+
+  if (t.type === "PROGN3") {
+    return `PROGN3(
+${sp}  ${treeToText(t.a, indent + 1)},
+${sp}  ${treeToText(t.b, indent + 1)},
+${sp}  ${treeToText(t.c, indent + 1)}
+${sp})`;
+  }
+}
+
+function evaluateProgram(prog) {
+  const savedEaten = eatenSet;
+  const savedVisited = visitedSet;
+  const savedAnt = { ...ant };
+  const savedSteps = steps;
+  const savedNodeId = currentNodeId;
+  const savedStack = execStack.slice();
+
+  eatenSet = new Set();
+  visitedSet = new Set();
+  ant = { x: 0, y: 0, dir: 1 };
+  steps = 0;
+
+  while (steps < MAX_STEPS) {
+    executeNodeSilent(prog);
+  }
+
+  const fitness = eatenSet.size;
+
+  eatenSet = savedEaten;
+  visitedSet = savedVisited;
+  ant = savedAnt;
+  steps = savedSteps;
+  currentNodeId = savedNodeId;
+  execStack = savedStack;
+
+  return fitness;
+}
+
+function executeNodeSilent(node) {
+  if (steps >= MAX_STEPS) return;
+
+  if (node.type === "MOVE") {
+    const f = frontCell();
+    ant.x = f.x;
+    ant.y = f.y;
+
+    const k = makeKey(ant.x, ant.y);
+    if (foodSet.has(k)) eatenSet.add(k);
+
+    steps++;
+  }
+  else if (node.type === "LEFT") {
+    ant.dir = (ant.dir + 3) % 4;
+    steps++;
+  }
+  else if (node.type === "RIGHT") {
+    ant.dir = (ant.dir + 1) % 4;
+    steps++;
+  }
+  else if (node.type === "IF") {
+    if (foodAhead()) executeNodeSilent(node.a);
+    else executeNodeSilent(node.b);
+  }
+  else if (node.type === "PROGN2") {
+    executeNodeSilent(node.a);
+    executeNodeSilent(node.b);
+  }
+  else if (node.type === "PROGN3") {
+    executeNodeSilent(node.a);
+    executeNodeSilent(node.b);
+    executeNodeSilent(node.c);
+  }
+}
+
+function runEvolution() {
+  rngSeed = Number(document.getElementById("seedInput").value);
+
+  const popSize = Number(document.getElementById("popSize").value);
+  const gens = Number(document.getElementById("generations").value);
+  const mr = Number(document.getElementById("mutationRate").value);
+
+  let pop = [];
+
+  for (let i = 0; i < popSize; i++) {
+    pop.push(randomTree(4));
+  }
+
+  let history = [];
+
+  for (let g = 0; g < gens; g++) {
+    let scored = pop.map(p => ({ p, fit: evaluateProgram(p) }));
+    scored.sort((a, b) => b.fit - a.fit);
+
+    history.push(scored[0].fit);
+
+    const eliteCount = Math.max(2, Math.floor(popSize * 0.2));
+    const elites = scored.slice(0, eliteCount).map(x => x.p);
+
+    let next = elites.map(cloneTree);
+
+    while (next.length < popSize) {
+      const parent = choice(elites);
+      next.push(mutateTree(parent, mr, 4));
+    }
+
+    pop = next;
+  }
+
+  let finalScored = pop.map(p => ({ p, fit: evaluateProgram(p) }));
+  finalScored.sort((a, b) => b.fit - a.fit);
+
+  const best = finalScored[0];
+  const bestText = treeToText(best.p);
+
+  document.getElementById("evoResult").textContent =
+`Best fitness: ${best.fit}
+
+Fitness history:
+${history.join(" → ")}
+
+Best program:
+${bestText}
+`;
+
+  document.getElementById("programText").value = bestText;
+  applyProgram();
+}
+
+initTrail();
+applyProgram();
+</script>
+
+</body>
+</html>
