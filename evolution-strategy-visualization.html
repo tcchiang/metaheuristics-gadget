@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Evolution Strategy 2-D Visualizer v7</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+:root{
+  --bg:#f6f2eb;
+  --panel:#fffaf3;
+  --panel2:#fff7eb;
+  --ink:#243044;
+  --muted:#6d7280;
+  --line:#e3d6c5;
+  --blue:#2563eb;
+  --blue2:#93c5fd;
+  --orange:#f97316;
+  --red:#dc2626;
+  --green:#16a34a;
+  --brown:#8b5e34;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC",Arial,sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+}
+header{
+  padding:10px 16px;
+  border-bottom:1px solid var(--line);
+  background:#fffaf3;
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+}
+header h1{
+  font-size:18px;
+  margin:0;
+}
+header .sub{
+  font-size:12px;color:var(--muted);
+}
+.layout{
+  display:grid;
+  grid-template-columns:280px minmax(420px,1fr) 330px;
+  gap:10px;
+  padding:10px;
+  height:calc(100vh - 54px);
+}
+.panel{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:0 8px 24px rgba(68,44,20,.08);
+}
+.left,.right{overflow:auto}
+.section{
+  padding:12px;
+  border-bottom:1px solid var(--line);
+}
+.section h2{
+  font-size:14px;margin:0 0 10px 0;color:#3f2d20;
+}
+.advanced-panel{
+  padding:0;
+}
+.advanced-summary{
+  padding:12px;
+  cursor:pointer;
+  font-size:14px;
+  font-weight:700;
+  color:#3f2d20;
+  user-select:none;
+}
+.advanced-panel[open] .advanced-summary{
+  border-bottom:1px solid var(--line);
+}
+.advanced-body{
+  padding:12px;
+}
+label{
+  display:block;
+  font-size:12px;
+  color:var(--muted);
+  margin:9px 0 4px;
+}
+input,select,button{
+  width:100%;
+  padding:7px 8px;
+  border:1px solid #d7c7b4;
+  border-radius:9px;
+  background:white;
+  color:var(--ink);
+}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button{
+  cursor:pointer;
+  background:#2f5f9e;
+  color:white;
+  font-weight:650;
+  border:0;
+}
+button.secondary{background:#705437}
+button.stop{background:#b91c1c}
+button.light{
+  background:#efe3d3;
+  color:#3f2d20;
+  border:1px solid #d7c7b4;
+}
+.smallnote{
+  font-size:12px;color:var(--muted);line-height:1.45;
+}
+.chartwrap{
+  height:100%;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+}
+#plot{width:100%;height:100%;min-height:460px;}
+.legend{
+  display:flex;flex-wrap:wrap;gap:10px;
+  padding:8px 12px;border-top:1px solid var(--line);
+  font-size:12px;color:var(--muted);
+}
+.badge{display:inline-flex;align-items:center;gap:5px}
+.dot,.xmark,.circle{
+  width:12px;height:12px;display:inline-block;
+}
+.dot{border-radius:50%;background:var(--blue)}
+.xmark{position:relative}
+.xmark:before,.xmark:after{
+  content:"";position:absolute;left:5px;top:0;width:2px;height:13px;background:var(--orange);
+}
+.xmark:before{transform:rotate(45deg)}
+.xmark:after{transform:rotate(-45deg)}
+.circle{border:2px solid var(--red);border-radius:50%}
+.debug{
+  padding:7px 12px;
+  font-size:12px;
+  color:#5b4631;
+  background:#fff3df;
+  border-bottom:1px solid var(--line);
+  display:flex;gap:10px;flex-wrap:wrap;
+}
+.poplist{
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+.ind{
+  border:1px solid #dbcab6;
+  background:#fffdf8;
+  border-radius:12px;
+  padding:8px 8px 7px;
+  position:relative;
+}
+.indhead{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:5px;
+}
+.idx{
+  font-weight:800;
+  color:#3f2d20;
+  font-size:12px;
+}
+.fit{
+  font-size:11px;
+  background:#f2e5d3;
+  color:#513820;
+  border-radius:999px;
+  padding:2px 7px;
+  font-variant-numeric:tabular-nums;
+}
+.vars{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:5px;
+}
+.var{
+  background:#eef4ff;
+  border-radius:8px;
+  padding:5px 6px;
+  font-size:11px;
+  font-variant-numeric:tabular-nums;
+  text-align:center;
+  border:1px solid #d7e6ff;
+}
+.var.s{
+  color:white;
+  border:0;
+  font-weight:750;
+}
+.stats{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+  font-size:12px;
+}
+.statbox{
+  background:#fffdf8;
+  border:1px solid #dbcab6;
+  border-radius:10px;
+  padding:8px;
+}
+.statbox b{display:block;font-size:15px;color:#3f2d20;margin-top:2px}
+@media(max-width:980px){
+  .layout{grid-template-columns:1fr;height:auto}
+  #plot{height:520px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Evolution Strategy 2-D Visualizer v7</h1>
+    <div class="sub">Encoding: [x1, x2, step size] · Parents-before-selection + offspring + survivor markers</div>
+  </div>
+  <div class="sub" id="status">Ready</div>
+</header>
+
+<div class="layout">
+  <aside class="panel left">
+    <div class="section">
+      <h2>Objective Function</h2>
+      <label>Function</label>
+      <select id="func">
+        <option value="sphere">Sphere: x² + y²</option>
+        <option value="rosen">Rosenbrock: (1-x)² + 100(y-x²)²</option>
+        <option value="rastrigin">Rastrigin: 20 + x² + y² - 10(cos(2πx)+cos(2πy))</option>
+      </select>
+    </div>
+
+    <div class="section">
+      <h2>ES Settings</h2>
+      <div class="row">
+        <div><label>μ: pop size</label><input id="mu" type="number" min="2" max="80" value="10"></div>
+        <div><label>λ: offspring</label><input id="lambda" type="number" min="2" max="300" value="40"></div>
+      </div>
+      <div class="row">
+        <div><label>Generations</label><input id="maxGen" type="number" min="1" max="5000" value="100"></div>
+        <div><label>ρ: parents</label><input id="rho" type="number" min="1" max="10" value="1"></div>
+      </div>
+      <label>Environmental selection</label>
+      <select id="selection">
+        <option value="comma">(μ, λ): select from offspring only</option>
+        <option value="plus">(μ + λ): select from parents + offspring</option>
+      </select>
+      <div class="row">
+        <div><label title="控制步長 s 的突變強度。越大代表每代步長變化越劇烈。">τ for step-size mutation</label><input id="tau" type="number" step="0.01" value="0.30" title="控制步長 s 的突變強度。越大代表每代步長變化越劇烈。"></div>
+        <div><label title="初始步長。越大探索範圍越廣，越小則偏向局部微調。">Initial s</label><input id="initS" type="number" step="0.1" value="1.0" title="初始步長。越大探索範圍越廣，越小則偏向局部微調。"></div>
+      </div>
+      <div class="row">
+        <div><label title="初始化族群時 x1、x2 的隨機下界。">Initial min</label><input id="initMin" type="number" step="0.5" value="-5" title="初始化族群時 x1、x2 的隨機下界。"></div>
+        <div><label title="初始化族群時 x1、x2 的隨機上界。">Initial max</label><input id="initMax" type="number" step="0.5" value="5" title="初始化族群時 x1、x2 的隨機上界。"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Actions</h2>
+      <div class="row">
+        <button id="resetBtn" class="secondary">重置</button>
+        <button id="stepBtn">執行一代</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="runBtn">連續執行</button>
+        <button id="stopBtn" class="stop">停止</button>
+      </div>
+      <div style="margin-top:8px">
+        <button id="finishBtn" class="light">跑到指定世代</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Statistics</h2>
+      <div class="stats">
+        <div class="statbox">Generation<b id="genStat">0</b></div>
+        <div class="statbox">Best fitness<b id="bestStat">-</b></div>
+        <div class="statbox">Avg. step size<b id="sStat">-</b></div>
+        <div class="statbox">Survivors P/O<b id="survStat">-</b></div>
+      </div>
+    </div>
+
+    <details class="section advanced-panel">
+      <summary class="advanced-summary">Dynamic View / Contour (Advanced)</summary>
+      <div class="advanced-body">
+      <label title="決定顯示範圍估計時使用哪些點。Population only 會更貼近目前族群。">Axis range source</label>
+      <select id="axisSource" title="決定顯示範圍估計時使用哪些點。Population only 會更貼近目前族群。">
+        <option value="popoffspring">Population + offspring</option>
+        <option value="population">Current population only</option>
+      </select>
+      <div class="row">
+        <div><label title="把 x/y 初估範圍向外擴張。數值越大，畫面視窗越寬。">XY outward factor</label><input id="xyFactor" type="number" step="0.1" min="1" value="2.0" title="把 x/y 初估範圍向外擴張。數值越大，畫面視窗越寬。"></div>
+        <div><label title="把 fitness 提示範圍向外擴張。數值越大，色階範圍越寬。">Fitness outward factor</label><input id="fitFactor" type="number" step="1" min="1" value="10" title="把 fitness 提示範圍向外擴張。數值越大，色階範圍越寬。"></div>
+      </div>
+      <div class="row">
+        <div><label title="希望的等高線條數。實際條數會因間距取整而接近此值。">Target contour lines</label><input id="targetLevels" type="number" min="6" max="60" value="22" title="希望的等高線條數。實際條數會因間距取整而接近此值。"></div>
+        <div><label title="網格解析度 n，實際會計算 n x n 個點。越高越細緻但越慢。">Grid resolution</label><input id="gridN" type="number" min="40" max="180" value="90" title="網格解析度 n，實際會計算 n x n 個點。越高越細緻但越慢。"></div>
+      </div>
+      <div class="row">
+        <div><label title="最小視窗會參考 population 分散度乘上此係數。">Adaptive span: pop factor</label><input id="spanPopK" type="number" step="0.1" min="0.1" value="1.6" title="最小視窗會參考 population 分散度乘上此係數。"></div>
+        <div><label title="最小視窗會參考平均步長乘上此係數。步長變大時可避免視窗過窄。">Adaptive span: step factor</label><input id="spanStepK" type="number" step="0.1" min="0.1" value="6.0" title="最小視窗會參考平均步長乘上此係數。步長變大時可避免視窗過窄。"></div>
+      </div>
+      <div class="row">
+        <div><label title="自適應視窗跨度的下界，避免縮太小。">Adaptive min span</label><input id="spanMin" type="number" step="0.1" min="0.1" value="0.6" title="自適應視窗跨度的下界，避免縮太小。"></div>
+        <div><label title="自適應視窗跨度的上界，避免視窗過大。">Adaptive max span</label><input id="spanMax" type="number" step="0.1" min="0.2" value="3.0" title="自適應視窗跨度的上界，避免視窗過大。"></div>
+      </div>
+      <label title="開啟後，視窗範圍會平滑過渡，減少每代跳動。"><input id="smoothView" type="checkbox" checked style="width:auto;margin-right:6px" title="開啟後，視窗範圍會平滑過渡，減少每代跳動。"> Smooth axis transition</label>
+      <div class="smallnote">
+        視窗跨度會依 population 分散度與平均步長自適應，並受 min/max span 夾制，再重算 contour 色階與等高線間隔。
+      </div>
+      </div>
+    </details>
+  </aside>
+
+  <main class="panel chartwrap">
+    <div class="debug" id="debug"></div>
+    <div id="plot"></div>
+    <div class="legend">
+      <span class="badge"><span class="dot"></span> Parent population before selection</span>
+      <span class="badge"><span class="xmark"></span> Offspring</span>
+      <span class="badge"><span class="circle"></span> Survivor marker</span>
+      <span class="badge">藍圓 = 本代原本 parent；橘叉 = 本代 offspring；紅框 = 被選中存活到下一代</span>
+    </div>
+  </main>
+
+  <aside class="panel right">
+    <div class="section">
+      <h2>Current Population</h2>
+      <div class="smallnote">右欄顯示 selection 後的下一代 current population；中間圖顯示本代 selection 前 parents 與 offspring。</div>
+    </div>
+    <div class="poplist" id="poplist"></div>
+  </aside>
+</div>
+
+<script>
+let population = [];
+let displayParents = [];
+let offspring = [];
+let survivors = {parents:[], offspring:[]};
+let generation = 0;
+let timer = null;
+let viewState = null;
+
+function randn(){
+  let u=0,v=0;
+  while(u===0) u=Math.random();
+  while(v===0) v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function fmt(v){
+  if(!Number.isFinite(v)) return "-";
+  if(Math.abs(v)>=1000 || (Math.abs(v)>0 && Math.abs(v)<0.001)) return v.toExponential(3);
+  return v.toFixed(4);
+}
+function obj(x,y){
+  const f = document.getElementById('func').value;
+  if(f==='sphere') return x*x + y*y;
+  if(f==='rosen') return Math.pow(1-x,2) + 100*Math.pow(y-x*x,2);
+  if(f==='rastrigin') return 20 + x*x - 10*Math.cos(2*Math.PI*x) + y*y - 10*Math.cos(2*Math.PI*y);
+}
+function makeInd(x,y,s,kind='parent',parentId=null){
+  return {x,y,s:Math.max(1e-9,s),fit:obj(x,y),kind,parentId,id:crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)};
+}
+function evaluateAll(arr){ arr.forEach(p=>p.fit=obj(p.x,p.y)); }
+function settings(){
+  return {
+    mu:+document.getElementById('mu').value,
+    lambda:+document.getElementById('lambda').value,
+    rho:+document.getElementById('rho').value,
+    tau:+document.getElementById('tau').value,
+    initS:+document.getElementById('initS').value,
+    initMin:+document.getElementById('initMin').value,
+    initMax:+document.getElementById('initMax').value,
+    selection:document.getElementById('selection').value,
+    maxGen:+document.getElementById('maxGen').value,
+    xyFactor:+document.getElementById('xyFactor').value,
+    fitFactor:+document.getElementById('fitFactor').value,
+    targetLevels:+document.getElementById('targetLevels').value,
+    gridN:+document.getElementById('gridN').value,
+    spanPopK:+document.getElementById('spanPopK').value,
+    spanStepK:+document.getElementById('spanStepK').value,
+    spanMin:+document.getElementById('spanMin').value,
+    spanMax:+document.getElementById('spanMax').value,
+    axisSource:document.getElementById('axisSource').value,
+    smoothView:document.getElementById('smoothView').checked
+  };
+}
+function reset(){
+  stop();
+  const st=settings();
+  population=[];
+  for(let i=0;i<st.mu;i++){
+    const x=st.initMin + Math.random()*(st.initMax-st.initMin);
+    const y=st.initMin + Math.random()*(st.initMax-st.initMin);
+    const s=st.initS*Math.exp(0.25*randn());
+    population.push(makeInd(x,y,s,'parent'));
+  }
+  displayParents=population.map(p=>({...p,kind:'parent'}));
+  offspring=[];
+  survivors={parents:[],offspring:[]};
+  generation=0;
+  viewState=null;
+  render();
+}
+function recombine(parents){
+  let x=0,y=0,ls=0;
+  parents.forEach(p=>{x+=p.x;y+=p.y;ls+=Math.log(p.s);});
+  return {x:x/parents.length,y:y/parents.length,s:Math.exp(ls/parents.length)};
+}
+function step(){
+  const st=settings();
+  evaluateAll(population);
+  const parentsBefore = population.map(p=>({...p,kind:'parent'}));
+  offspring=[];
+  for(let l=0;l<st.lambda;l++){
+    let parents=[];
+    for(let r=0;r<Math.max(1,st.rho);r++){
+      parents.push(population[Math.floor(Math.random()*population.length)]);
+    }
+    const base=recombine(parents);
+    const sp=clamp(base.s*Math.exp(st.tau*randn()),1e-8,1e8);
+    const child=makeInd(base.x + sp*randn(), base.y + sp*randn(), sp, 'offspring');
+    offspring.push(child);
+  }
+
+  displayParents = parentsBefore;
+  let pool = st.selection==='plus' ? parentsBefore.concat(offspring) : offspring.slice();
+  pool.sort((a,b)=>a.fit-b.fit);
+  const chosen = pool.slice(0,st.mu);
+
+  survivors.parents = chosen.filter(p=>p.kind==='parent').map(p=>({...p}));
+  survivors.offspring = chosen.filter(p=>p.kind==='offspring').map(p=>({...p}));
+
+  population = chosen.map(p=>makeInd(p.x,p.y,p.s,'parent'));
+  generation++;
+  render();
+}
+function run(){
+  stop();
+  timer=setInterval(()=>{
+    if(generation>=settings().maxGen){ stop(); return; }
+    step();
+  },180);
+}
+function stop(){
+  if(timer){clearInterval(timer);timer=null;}
+}
+function finish(){
+  stop();
+  const target=settings().maxGen;
+  let guard=0;
+  while(generation<target && guard<10000){ stepNoRender(); guard++; }
+  render();
+}
+function stepNoRender(){
+  const savedRender = render;
+  const st=settings();
+  evaluateAll(population);
+  const parentsBefore = population.map(p=>({...p,kind:'parent'}));
+  offspring=[];
+  for(let l=0;l<st.lambda;l++){
+    let parents=[];
+    for(let r=0;r<Math.max(1,st.rho);r++) parents.push(population[Math.floor(Math.random()*population.length)]);
+    const base=recombine(parents);
+    const sp=clamp(base.s*Math.exp(st.tau*randn()),1e-8,1e8);
+    offspring.push(makeInd(base.x + sp*randn(), base.y + sp*randn(), sp, 'offspring'));
+  }
+  displayParents = parentsBefore;
+  let pool = st.selection==='plus' ? parentsBefore.concat(offspring) : offspring.slice();
+  pool.sort((a,b)=>a.fit-b.fit);
+  const chosen = pool.slice(0,st.mu);
+  survivors.parents = chosen.filter(p=>p.kind==='parent').map(p=>({...p}));
+  survivors.offspring = chosen.filter(p=>p.kind==='offspring').map(p=>({...p}));
+  population = chosen.map(p=>makeInd(p.x,p.y,p.s,'parent'));
+  generation++;
+}
+
+function outwardMinMax(vals, factor, isFitness=false){
+  let mn=Math.min(...vals), mx=Math.max(...vals);
+  if(!Number.isFinite(mn)||!Number.isFinite(mx)){mn=-1;mx=1;}
+  if(Math.abs(mx-mn)<1e-12){
+    const base=Math.max(1,Math.abs(mx));
+    mn -= base*0.5; mx += base*0.5;
+  }
+  // User-request-inspired expansion:
+  // positive max -> multiply by factor; negative max -> divide by factor, so it moves closer to zero
+  // positive min -> divide by factor; negative min -> multiply by factor, so it moves farther negative
+  let lo, hi;
+  if(isFitness){
+    const eps=1e-12;
+    lo = Math.max(0, mn / factor);
+    hi = Math.max(mx * factor, lo + eps);
+  }else{
+    lo = mn < 0 ? mn * factor : mn / factor;
+    hi = mx > 0 ? mx * factor : mx / factor;
+    // If range crosses too little due to signs, add padding
+    if(!(lo < hi)){ const c=(mn+mx)/2, r=Math.max(1,Math.abs(c)); lo=c-r; hi=c+r; }
+  }
+  const pad=(hi-lo)*0.04;
+  return [lo-pad,hi+pad];
+}
+
+function computeDynamicRanges(){
+  const st=settings();
+  const parentsForPlot = displayParents.length ? displayParents : population;
+  let source = st.axisSource==='population' ? parentsForPlot.slice() : parentsForPlot.concat(offspring);
+  if(source.length===0) source=population.slice();
+  const xs=source.map(p=>p.x), ys=source.map(p=>p.y), fs=source.map(p=>p.fit);
+  let [xmin,xmax]=outwardMinMax(xs,st.xyFactor,false);
+  let [ymin,ymax]=outwardMinMax(ys,st.xyFactor,false);
+  // Keep square aspect in data coordinates
+  const cx=(xmin+xmax)/2, cy=(ymin+ymax)/2;
+  const popRef = population.length ? population : source;
+  const px = popRef.map(p=>p.x);
+  const py = popRef.map(p=>p.y);
+  const pSpan = Math.max(
+    Math.max(...px)-Math.min(...px),
+    Math.max(...py)-Math.min(...py),
+    1e-9
+  );
+  const avgS = popRef.reduce((a,p)=>a+Math.max(p.s,1e-12),0)/Math.max(1,popRef.length);
+  const low = Math.min(st.spanMin, st.spanMax);
+  const high = Math.max(st.spanMin, st.spanMax);
+  const adaptiveMinSpan = clamp(Math.max(pSpan*st.spanPopK, avgS*st.spanStepK), low, high);
+  const span=Math.max(xmax-xmin,ymax-ymin,adaptiveMinSpan);
+  xmin=cx-span/2; xmax=cx+span/2; ymin=cy-span/2; ymax=cy+span/2;
+
+  // fitness range from population/offspring first, then combined with grid actual range
+  let [fminHint,fmaxHint]=outwardMinMax(fs,st.fitFactor,true);
+  return {xmin,xmax,ymin,ymax,fminHint,fmaxHint};
+}
+
+function smoothRanges(r){
+  const st=settings();
+  if(!st.smoothView || !viewState){ viewState={...r}; return r; }
+  const a=0.35; // deliberately responsive enough to follow population
+  for(const k of ['xmin','xmax','ymin','ymax','fminHint','fmaxHint']){
+    viewState[k]=viewState[k]*(1-a)+r[k]*a;
+  }
+  return {...viewState};
+}
+
+function niceStep(raw){
+  if(!Number.isFinite(raw)||raw<=0) return 1;
+  const exp=Math.floor(Math.log10(raw));
+  const base=raw/Math.pow(10,exp);
+  let nb=1;
+  if(base<=1) nb=1;
+  else if(base<=2) nb=2;
+  else if(base<=2.5) nb=2.5;
+  else if(base<=5) nb=5;
+  else nb=10;
+  return nb*Math.pow(10,exp);
+}
+
+function contourSpec(zmin,zmax,target){
+  let range=zmax-zmin;
+  if(!Number.isFinite(range)||range<=1e-15) range=Math.max(1e-12,Math.abs(zmax)*1e-6);
+  const step=niceStep(range/target);
+  const start=Math.floor(zmin/step)*step;
+  const end=Math.ceil(zmax/step)*step;
+  const n=Math.max(1,Math.round((end-start)/step)+1);
+  return {start,end,step,n,range};
+}
+
+function gridData(r){
+  const st=settings();
+  const func = document.getElementById('func').value;
+  const n=st.gridN;
+  const x=[], y=[], z=[];
+  let zmin=Infinity,zmax=-Infinity;
+  for(let i=0;i<n;i++) x.push(r.xmin+(r.xmax-r.xmin)*i/(n-1));
+  for(let j=0;j<n;j++) y.push(r.ymin+(r.ymax-r.ymin)*j/(n-1));
+  for(let j=0;j<n;j++){
+    const row=[];
+    for(let i=0;i<n;i++){
+      const val=obj(x[i],y[j]);
+      row.push(val);
+      if(val<zmin) zmin=val;
+      if(val>zmax) zmax=val;
+    }
+    z.push(row);
+  }
+  // Combine actual grid range with fitness-hint range so color scale follows current population
+  let cmin=Math.max(0, Math.min(zmin, r.fminHint));
+  let cmax=Math.max(zmax, r.fmaxHint);
+
+  // Sphere and Rosenbrock can become visually flat near optimum.
+  // Keep a tiny display-only minimum contour range per function.
+  const minContourRangeByFunc = {
+    sphere: 1e-3,
+    rosen: 1e-2
+  };
+  const minContourRange = minContourRangeByFunc[func] || 0;
+  if(minContourRange > 0 && (cmax - cmin) < minContourRange){
+    cmax = cmin + minContourRange;
+  }
+
+  if(cmax<=cmin){ cmax=cmin+1e-9; }
+  const cs=contourSpec(cmin,cmax,st.targetLevels);
+  return {x,y,z,zmin,zmax,cmin,cmax,cs};
+}
+
+function markerText(p,label){
+  return `${label}<br>x1 = ${fmt(p.x)}<br>x2 = ${fmt(p.y)}<br>s = ${fmt(p.s)}<br>fitness = ${fmt(p.fit)}`;
+}
+
+function renderPlot(){
+  const raw=computeDynamicRanges();
+  const r=smoothRanges(raw);
+  const gd=gridData(r);
+
+  const contour = {
+    type:'contour',
+    x:gd.x,y:gd.y,z:gd.z,
+    zmin:gd.cmin,zmax:gd.cmax,
+    colorscale:[
+      [0,'#fff8e8'],
+      [0.18,'#f1dfbd'],
+      [0.36,'#d8b77f'],
+      [0.58,'#b9894f'],
+      [0.78,'#8f5f33'],
+      [1,'#543515']
+    ],
+    contours:{
+      start:gd.cs.start,
+      end:gd.cs.end,
+      size:gd.cs.step,
+      coloring:'heatmap',
+      showlines:true
+    },
+    line:{color:'rgba(77,45,20,0.62)',width:1.1},
+    showscale:true,
+    colorbar:{title:'f(x)',len:0.74,thickness:12}
+  };
+
+  const parentsForPlot = displayParents.length ? displayParents : population;
+  const parentTrace = {
+    type:'scatter',mode:'markers',
+    name:'parent population before selection',
+    x:parentsForPlot.map(p=>p.x),y:parentsForPlot.map(p=>p.y),
+    text:parentsForPlot.map(p=>markerText(p,'Parent before selection')),
+    hoverinfo:'text',
+    marker:{size:10,color:'#2563eb',line:{color:'#dbeafe',width:1.5}}
+  };
+
+  const offspringTrace = {
+    type:'scatter',mode:'markers',
+    name:'offspring',
+    x:offspring.map(p=>p.x),y:offspring.map(p=>p.y),
+    text:offspring.map(p=>markerText(p,'Offspring')),
+    hoverinfo:'text',
+    marker:{symbol:'x',size:10,color:'#f97316',line:{width:2}}
+  };
+
+  const selectedParents = {
+    type:'scatter',mode:'markers',
+    name:'selected parent',
+    x:survivors.parents.map(p=>p.x), y:survivors.parents.map(p=>p.y),
+    text:survivors.parents.map(p=>markerText(p,'Selected parent')),
+    hoverinfo:'text',
+    marker:{symbol:'circle-open',size:18,color:'#dc2626',line:{color:'#dc2626',width:3}}
+  };
+
+  // red frame around orange X: draw orange x plus red open square
+  const selectedOffspringFrame = {
+    type:'scatter',mode:'markers',
+    name:'selected offspring frame',
+    x:survivors.offspring.map(p=>p.x), y:survivors.offspring.map(p=>p.y),
+    text:survivors.offspring.map(p=>markerText(p,'Selected offspring')),
+    hoverinfo:'text',
+    marker:{symbol:'square-open',size:18,color:'#dc2626',line:{color:'#dc2626',width:3}}
+  };
+  const selectedOffspringX = {
+    type:'scatter',mode:'markers',
+    name:'selected offspring',
+    x:survivors.offspring.map(p=>p.x), y:survivors.offspring.map(p=>p.y),
+    text:survivors.offspring.map(p=>markerText(p,'Selected offspring')),
+    hoverinfo:'text',
+    marker:{symbol:'x',size:11,color:'#f97316',line:{width:3}}
+  };
+
+  const best = population.reduce((a,b)=>a.fit<b.fit?a:b,population[0]);
+  const optimum = document.getElementById('func').value==='rosen' ? {x:1,y:1} : {x:0,y:0};
+  const optTrace = {
+    type:'scatter',mode:'markers',
+    name:'known optimum',
+    x:[optimum.x],y:[optimum.y],
+    hoverinfo:'text',
+    text:['Known optimum'],
+    marker:{symbol:'star',size:13,color:'#111827',line:{color:'#ffffff',width:1}}
+  };
+
+  const layout = {
+    margin:{l:48,r:18,t:20,b:42},
+    paper_bgcolor:'#fffaf3',
+    plot_bgcolor:'#fffaf3',
+    xaxis:{title:'x1',range:[r.xmin,r.xmax],zeroline:true,zerolinecolor:'rgba(0,0,0,.25)',gridcolor:'rgba(120,80,40,.13)'},
+    yaxis:{title:'x2',range:[r.ymin,r.ymax],scaleanchor:'x',scaleratio:1,zeroline:true,zerolinecolor:'rgba(0,0,0,.25)',gridcolor:'rgba(120,80,40,.13)'},
+    showlegend:false,
+    hovermode:'closest'
+  };
+
+  Plotly.react('plot',[contour,parentTrace,offspringTrace,selectedParents,selectedOffspringFrame,selectedOffspringX,optTrace],layout,{responsive:true,displayModeBar:false});
+
+  document.getElementById('debug').innerHTML =
+    `<span>x=[${fmt(r.xmin)}, ${fmt(r.xmax)}]</span>`+
+    `<span>y=[${fmt(r.ymin)}, ${fmt(r.ymax)}]</span>`+
+    `<span>fitness hint=[${fmt(r.fminHint)}, ${fmt(r.fmaxHint)}]</span>`+
+    `<span>contour z=[${fmt(gd.cmin)}, ${fmt(gd.cmax)}]</span>`+
+    `<span>interval=${fmt(gd.cs.step)}</span>`+
+    `<span>levels≈${gd.cs.n}</span>`;
+}
+
+function stepColor(s, minS, maxS){
+  const ls=Math.log(Math.max(s,1e-12));
+  const lmin=Math.log(Math.max(minS,1e-12));
+  const lmax=Math.log(Math.max(maxS,1e-12));
+  let t=(ls-lmin)/(lmax-lmin || 1);
+  t=clamp(t,0,1);
+  // green -> yellow -> red
+  const hue=120*(1-t);
+  return `hsl(${hue},70%,42%)`;
+}
+function renderPopList(){
+  const div=document.getElementById('poplist');
+  const ss=population.map(p=>p.s);
+  const minS=Math.min(...ss), maxS=Math.max(...ss);
+  div.innerHTML=population
+    .map((p,i)=>`
+      <div class="ind">
+        <div class="indhead">
+          <span class="idx">#${i+1}</span>
+          <span class="fit">f=${fmt(p.fit)}</span>
+        </div>
+        <div class="vars">
+          <div class="var">x1<br><b>${fmt(p.x)}</b></div>
+          <div class="var">x2<br><b>${fmt(p.y)}</b></div>
+          <div class="var s" style="background:${stepColor(p.s,minS,maxS)}">s<br><b>${fmt(p.s)}</b></div>
+        </div>
+      </div>
+    `).join('');
+}
+function renderStats(){
+  const best=population.reduce((a,b)=>a.fit<b.fit?a:b,population[0]);
+  const avgS=population.reduce((a,p)=>a+p.s,0)/population.length;
+  document.getElementById('genStat').textContent=generation;
+  document.getElementById('bestStat').textContent=fmt(best.fit);
+  document.getElementById('sStat').textContent=fmt(avgS);
+  document.getElementById('survStat').textContent=`${survivors.parents.length}/${survivors.offspring.length}`;
+  document.getElementById('status').textContent=`Generation ${generation}, best f = ${fmt(best.fit)}`;
+}
+function render(){
+  evaluateAll(population); evaluateAll(displayParents); evaluateAll(offspring);
+  renderStats();
+  renderPopList();
+  renderPlot();
+}
+
+document.getElementById('resetBtn').onclick=reset;
+document.getElementById('stepBtn').onclick=step;
+document.getElementById('runBtn').onclick=run;
+document.getElementById('stopBtn').onclick=stop;
+document.getElementById('finishBtn').onclick=finish;
+['func','mu','lambda','rho','selection','tau','initS','initMin','initMax','xyFactor','fitFactor','targetLevels','gridN','spanPopK','spanStepK','spanMin','spanMax','axisSource','smoothView'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',()=>{
+    if(['func','mu','lambda','initMin','initMax','initS'].includes(id)) reset();
+    else render();
+  });
+});
+reset();
+</script>
+</body>
+</html>
