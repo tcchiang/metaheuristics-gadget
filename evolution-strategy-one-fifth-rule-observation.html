@@ -38,7 +38,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>2-D Sphere 上的 Progress Rate 與 Successful Rate</h1>
+    <h1>2-D Sphere 上的 Progress Rate 與 Success Rate</h1>
     <div class="sub">目標函數：f(x₁,x₂)=x₁²+x₂²，最佳解在 (0,0)。在目前 solution 周圍用 Gaussian mutation 取樣 100 個 offspring。</div>
   </header>
 
@@ -57,7 +57,7 @@
     </div>
     <div class="stats">
       <div class="stat"><div class="k">Progress rate φ = mean(Δr)</div><div class="v" id="progressRate">-</div></div>
-      <div class="stat"><div class="k">Successful rate</div><div class="v" id="successRate">-</div></div>
+      <div class="stat"><div class="k">Success rate</div><div class="v" id="successRate">-</div></div>
       <div class="stat"><div class="k">目前距離 r</div><div class="v" id="currentR">-</div></div>
       <div class="stat"><div class="k">成功 offspring 數</div><div class="v" id="successCount">-</div></div>
     </div>
@@ -66,7 +66,7 @@
       r = ||x||，r' = ||y||<br>
       Δr = r - r'<br>
       progress rate：φ = E[Δr] ≈ average of 100 samples<br>
-      successful rate：Pr(f(y)&lt;f(x)) ≈ 成功樣本比例
+      success rate：Pr(f(y)&lt;f(x)) ≈ 成功樣本比例
     </div>
   </section>
 
