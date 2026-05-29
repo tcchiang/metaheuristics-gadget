@@ -11,4 +11,5 @@ Small interactive tools for learning metaheuristics
 | [ES: 1/5 rule](https://tcchiang.github.io/metaheuristics-gadgets/evolution-strategy-one-fifth-rule-observation.html) | 1/5 rule of evolution strategy: Observing the progress rate & successful rate |
 | [GP: Santa Fe Trail](https://tcchiang.github.io/metaheuristics-gadgets/santa-fe-trail-genetic-programming.html) | Genetic programming: Solving the Santa Fe Trail problem|
 | [Lamarckian vs. Baldwinian](https://tcchiang.github.io/metaheuristics-gadgets/baldwin-lamarck-visualizer.html) | Memetic algorithm: Lamarckian vs. Baldwinian |
+| [EMO Metric Playground](https://tcchiang.github.io/metaheuristics-gadgets/emo-metric-playground.html) | Playing with EMO performance metrics including IGD and HV |
 | [EMO: Scalarization Explorer](https://tcchiang.github.io/metaheuristics-gadgets/scalarization-explorer-v2.html) | WS vs. TCH vs. PBI |
