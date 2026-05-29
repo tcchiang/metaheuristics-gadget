@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EMO Performance Metric Playground</title>
+<style>
+  :root{
+    --bg:#f6f8fb; --panel:#ffffff; --ink:#243044; --muted:#6b7280; --line:#d8dee9;
+    --blue:#2563eb; --orange:#f97316; --green:#16a34a; --red:#dc2626; --purple:#7c3aed;
+    --shadow:0 10px 28px rgba(15,23,42,.08); --radius:18px;
+  }
+  *{box-sizing:border-box}
+  html, body, svg, text, .card, .control, .plot-wrap{user-select:none; -webkit-user-select:none;}
+  body{margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif; color:var(--ink); background:var(--bg)}
+  header{padding:22px 28px 10px}
+  h1{font-size:26px; margin:0 0 6px; letter-spacing:.2px}
+  .subtitle{color:var(--muted); font-size:14px}
+  main{display:grid; grid-template-columns:300px minmax(560px,1fr) 430px; gap:18px; padding:14px 24px 24px; max-width:1740px; margin:0 auto; align-items:start}
+  .card{background:var(--panel); border:1px solid #e6eaf1; border-radius:var(--radius); box-shadow:var(--shadow)}
+  .control{padding:18px; align-self:start}
+  .section{border-top:1px solid #edf0f5; padding-top:14px; margin-top:14px}
+  .section:first-child{border-top:0; padding-top:0; margin-top:0}
+  .section h2{font-size:14px; margin:0 0 10px; color:#111827; text-transform:uppercase; letter-spacing:.06em}
+  label{display:flex; gap:8px; align-items:center; margin:8px 0; color:#374151; font-size:14px; cursor:pointer}
+  select, input[type="number"]{width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:white; color:var(--ink); font-size:14px}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0}
+  button{border:0; border-radius:12px; padding:9px 11px; background:#eef2ff; color:#3730a3; font-weight:650; cursor:pointer; font-size:13px}
+  button:hover{filter:brightness(.97)}
+  button.danger{background:#fff1f2; color:#be123c}
+  button.neutral{background:#f3f4f6; color:#374151}
+  button.blue{background:#eff6ff; color:var(--blue)}
+  button.orange{background:#fff7ed; color:var(--orange)}
+  .hint{font-size:12px; color:var(--muted); line-height:1.55; margin-top:8px}
+  .plot-wrap{padding:16px}
+  .toolbar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; flex-wrap:wrap}
+  .legend{display:flex; gap:14px; font-size:13px; color:#4b5563; align-items:center; flex-wrap:wrap}
+  .dot{width:11px; height:11px; display:inline-block; border-radius:50%; margin-right:5px; vertical-align:middle}
+  .tri{width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent; border-bottom:12px solid var(--orange); display:inline-block; margin-right:5px; vertical-align:middle}
+  svg{width:100%; height:min(65vh,650px); min-height:480px; display:block; background:linear-gradient(#fff,#fbfcff); border-radius:14px; border:1px solid #e6eaf1; touch-action:none}
+  .table-card{padding:16px; align-self:start; position:sticky; top:12px; max-height:calc(100vh - 24px); overflow:auto}
+  table{border-collapse:separate; border-spacing:0; width:100%; overflow:hidden; border-radius:14px; border:1px solid #e5e7eb; font-size:13px}
+  th,td{padding:9px 8px; border-bottom:1px solid #e5e7eb; text-align:right; vertical-align:top}
+  th:first-child, td:first-child{text-align:left}
+  th{background:#f8fafc; color:#374151; font-weight:700}
+  tr:last-child td{border-bottom:0}
+  .better{font-weight:900; color:#111827; background:#fefce8}
+  .tag{font-size:12px; color:white; border-radius:999px; padding:3px 9px; font-weight:700}
+  .tagA{background:var(--blue)} .tagB{background:var(--orange)} .tagTie{background:#64748b}
+  .metric-note{font-size:12px; color:var(--muted); margin-top:10px; line-height:1.55}
+  .pointA{fill:var(--blue); stroke:white; stroke-width:2; cursor:grab}
+  .pointB{fill:var(--orange); stroke:white; stroke-width:2; cursor:grab}
+  .pf{fill:none; stroke:#9ca3af; stroke-width:3; stroke-linecap:round}
+  .pf-point{fill:#9ca3af; opacity:.55}
+  .axis{stroke:#334155; stroke-width:1.4}
+  .grid{stroke:#e5e7eb; stroke-width:1}
+  .ticktext{fill:#64748b; font-size:12px; pointer-events:none}
+  .overlayLine{stroke-width:1.5; opacity:.78; stroke-dasharray:4 4; pointer-events:none}
+  .hvRectA{fill:rgba(37,99,235,.16); stroke:rgba(37,99,235,.32)}
+  .hvRectB{fill:rgba(249,115,22,.14); stroke:rgba(249,115,22,.3)}
+  .status{font-size:13px; color:#475569}
+  @media(max-width:1200px){main{grid-template-columns:280px 1fr}.table-card{grid-column:1 / -1; position:static; max-height:none} svg{height:560px}}
+  @media(max-width:900px){main{grid-template-columns:1fr}.table-card{grid-column:auto; order:3}.control{order:2}.plot-wrap{order:1} svg{height:520px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>EMO Performance Metric Playground</h1>
+  <div class="subtitle">用滑鼠建立兩組近似 Pareto front，觀察 GD、IGD、IGD+、HV、Spacing、ε-indicator 如何評價它們。</div>
+</header>
+<main>
+  <aside class="card control">
+    <div class="section">
+      <h2>Pareto front</h2>
+      <select id="pfSelect">
+        <option value="zdt1">ZDT1：連續凹形 front</option>
+        <option value="zdt2">ZDT2：非凸 front</option>
+        <option value="zdt3">ZDT3：不連續 front</option>
+      </select>
+    </div>
+
+    <div class="section">
+      <h2>Editing set</h2>
+      <label><input type="radio" name="editSet" value="A" checked> Set A（藍色）</label>
+      <label><input type="radio" name="editSet" value="B"> Set B（橘色）</label>
+      <div class="hint">在圖上點擊可新增點；拖曳可移動點；按住 Shift 點擊可刪除最近的點。</div>
+    </div>
+
+    <div class="section">
+      <h2>Examples</h2>
+      <button class="neutral" id="ex1">A 收斂好但覆蓋差；B 覆蓋好但較遠</button>
+      <div style="height:8px"></div>
+      <button class="neutral" id="ex2">A 分布均勻；B 群聚不均</button>
+      <div style="height:8px"></div>
+      <button class="neutral" id="ex3">HV 對極端點敏感示例</button>
+      <div style="height:8px"></div>
+      <button class="neutral" id="ex4">IGD 與 IGD+ 勝負不一致</button>
+    </div>
+
+    <div class="section">
+      <h2>Actions</h2>
+      <div class="row">
+        <button class="blue" id="clearA">Clear A</button>
+        <button class="orange" id="clearB">Clear B</button>
+      </div>
+      <button class="neutral" id="pruneDominated" style="width:100%; margin:8px 0 0">Delete dominated solutions</button>
+      <div class="row">
+        <button class="neutral" id="undo">Undo</button>
+        <button class="danger" id="reset">Reset all</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Reference point for HV</h2>
+      <div class="row">
+        <input id="refX" type="number" min="0" max="2" step="0.05" value="1.20">
+        <input id="refY" type="number" min="0" max="2" step="0.05" value="1.20">
+      </div>
+      <div class="hint">二目標最小化，HV 計算被解集合支配、且位於 reference point 左下方的面積。</div>
+    </div>
+
+    <div class="section">
+      <h2>Overlays</h2>
+      <label><input type="checkbox" id="showGD"> Show GD distances</label>
+      <label><input type="checkbox" id="showIGD"> Show IGD distances</label>
+      <label><input type="checkbox" id="showIGDPlus"> Show IGD+ distances</label>
+      <label><input type="checkbox" id="showHV"> Show HV region</label>
+      <label><input type="checkbox" id="showSpacing"> Show spacing links</label>
+    </div>
+  </aside>
+
+  <section class="card plot-wrap">
+    <div class="toolbar">
+      <div class="legend">
+        <span><span class="dot" style="background:#9ca3af"></span>True PF</span>
+        <span><span class="dot" style="background:#2563eb"></span>Set A</span>
+        <span><span class="tri"></span>Set B</span>
+      </div>
+      <div class="status" id="status">A: 0 points, B: 0 points</div>
+    </div>
+    <svg id="svg" viewBox="0 0 900 620" aria-label="2D objective space"></svg>
+  </section>
+
+  <section class="card table-card">
+    <div class="section" style="border-top:0; padding-top:0; margin-top:0">
+      <h2>Performance metrics</h2>
+      <table id="metricTable">
+        <thead><tr><th>Metric</th><th>Set A</th><th>Set B</th><th>Better</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="metric-note">↓ 越小越好；↑ 越大越好。粗體代表該 metric 的較佳值。</div>
+    </div>
+    <div class="section">
+      <h2>Solution counts</h2>
+      <div id="setStats" class="metric-note"></div>
+    </div>
+    <div class="section">
+      <h2>Metric meanings</h2>
+      <div class="metric-note">
+        <b>GD</b>：解集合到 PF 的平均距離。<br>
+        <b>IGD</b>：PF 到解集合的平均距離。<br>
+        <b>IGD+</b>：dominance-aware 的 IGD。<br>
+        <b>HV</b>：被解集合支配的面積。<br>
+        <b>Spacing</b>：最近鄰距離是否一致。<br>
+        <b>ε</b>：還要平移多少才能 cover/reference PF。
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const svg = document.getElementById('svg');
+const W = 900, H = 620;
+const margin = {l:70, r:40, t:36, b:65};
+const plot = {x:margin.l, y:margin.t, w:W-margin.l-margin.r, h:H-margin.t-margin.b};
+const state = { A:[], B:[], history:[], pfType:'zdt1', pf:[], pfSegments:[], drag:null, message:'', view:{xMin:0,xMax:1.25,yMin:0,yMax:1.25} };
+const EPS = 1e-9;
+
+function setViewForPF(type){
+  // ZDT3 has negative f₂ values, so it needs a different axis range.
+  state.view = (type==='zdt3')
+    ? {xMin:0, xMax:1.05, yMin:-0.9, yMax:1.25}
+    : {xMin:0, xMax:1.25, yMin:0, yMax:1.25};
+}
+function sx(x){ const v=state.view; return plot.x + (x-v.xMin)/(v.xMax-v.xMin)*plot.w; }
+function sy(y){ const v=state.view; return plot.y + plot.h - (y-v.yMin)/(v.yMax-v.yMin)*plot.h; }
+function dx(px){ const v=state.view; const x=v.xMin + (px-plot.x)/plot.w*(v.xMax-v.xMin); return Math.max(v.xMin, Math.min(v.xMax, x)); }
+function dy(py){ const v=state.view; const y=v.yMin + (plot.y+plot.h-py)/plot.h*(v.yMax-v.yMin); return Math.max(v.yMin, Math.min(v.yMax, y)); }
+function fmt(v){ if(!isFinite(v)) return '—'; return v<0.001 ? v.toExponential(2) : v.toFixed(4); }
+function dist(a,b){ const x=a.x-b.x, y=a.y-b.y; return Math.hypot(x,y); }
+function cloneSets(){ return {A:state.A.map(p=>({...p})), B:state.B.map(p=>({...p}))}; }
+function pushHistory(){ state.history.push(cloneSets()); if(state.history.length>50) state.history.shift(); }
+function setHistory(h){ state.A=h.A; state.B=h.B; }
+
+function zdt3y(x){ return 1 - Math.sqrt(x) - x*Math.sin(10*Math.PI*x); }
+function generatePFData(type){
+  const segments=[];
+  if(type==='zdt1'){
+    const seg=[];
+    for(let i=0;i<=500;i++){ const x=i/500; seg.push({x, y:1-Math.sqrt(x)}); }
+    segments.push(seg);
+  }else if(type==='zdt2'){
+    const seg=[];
+    for(let i=0;i<=500;i++){ const x=i/500; seg.push({x, y:1-x*x}); }
+    segments.push(seg);
+  }else{
+    // Known nondominated intervals of the ZDT3 Pareto front.
+    // Drawing them as separate paths prevents the disconnected PF from vanishing
+    // or being visually connected across gaps.
+    const ranges = [
+      [0.0000000000, 0.0830015349],
+      [0.1822287280, 0.2577623634],
+      [0.4093136748, 0.4538821041],
+      [0.6183967944, 0.6525117038],
+      [0.8233317983, 0.8518328654]
+    ];
+    for(const [a,b] of ranges){
+      const seg=[];
+      for(let i=0;i<=100;i++){ const x=a+(b-a)*i/100; seg.push({x, y:zdt3y(x)}); }
+      segments.push(seg);
+    }
+  }
+  return {segments, points:segments.flat()};
+}
+function setPF(type){
+  setViewForPF(type);
+  const data = generatePFData(type);
+  state.pfSegments = data.segments;
+  state.pf = data.points;
+}
+function dominatesPF(p){
+  return state.pf.some(r => p.x <= r.x + EPS && p.y <= r.y + EPS && (p.x < r.x - EPS || p.y < r.y - EPS));
+}
+function isLegalPoint(p){ return !dominatesPF(p); }
+function setMessage(msg){ state.message = msg; clearTimeout(setMessage.timer); setMessage.timer=setTimeout(()=>{state.message=''; updateStatus();}, 1800); updateStatus(); }
+function addLegalPoint(setName, p){
+  if(!isLegalPoint(p)){ setMessage('此點會支配 Pareto front 上的點，已拒絕新增。'); return false; }
+  state[setName].push(p); return true;
+}
+function sanitizeSet(S){ return S.filter(isLegalPoint); }
+
+function nearestPoint(p, arr, distanceFn=dist){
+  let best=null, bd=Infinity;
+  for(const q of arr){ const d=distanceFn(p,q); if(d<bd){bd=d; best=q;} }
+  return {point:best, d:bd};
+}
+function gd(S,R){ if(S.length===0) return Infinity; let sum=0; for(const p of S){ const n=nearestPoint(p,R); sum += n.d*n.d; } return Math.sqrt(sum)/S.length; }
+function igd(S,R){ if(S.length===0) return Infinity; let sum=0; for(const r of R){ sum += nearestPoint(r,S).d; } return sum/R.length; }
+function dPlus(r,a){ return Math.hypot(Math.max(a.x-r.x,0), Math.max(a.y-r.y,0)); }
+function igdPlus(S,R){ if(S.length===0) return Infinity; let sum=0; for(const r of R){ sum += nearestPoint(r,S,(rr,aa)=>dPlus(rr,aa)).d; } return sum/R.length; }
+function spacing(S){
+  if(S.length<2) return Infinity;
+  const ds=S.map((p,i)=>{
+    let b=Infinity; for(let j=0;j<S.length;j++) if(i!==j) b=Math.min(b,dist(p,S[j])); return b;
+  });
+  const mean=ds.reduce((a,b)=>a+b,0)/ds.length;
+  return Math.sqrt(ds.reduce((a,d)=>a+(d-mean)*(d-mean),0)/(ds.length-1));
+}
+function epsilonUnary(S,R){
+  if(S.length===0) return Infinity;
+  let eps=-Infinity;
+  for(const r of R){
+    let best=Infinity;
+    for(const s of S){ best=Math.min(best, Math.max(s.x-r.x, s.y-r.y)); }
+    eps=Math.max(eps,best);
+  }
+  return eps;
+}
+function nondominated(S){
+  return S.filter((p,i)=>!S.some((q,j)=>j!==i && q.x<=p.x+EPS && q.y<=p.y+EPS && (q.x<p.x-EPS || q.y<p.y-EPS)));
+}
+function removeDominatedSolutions(){
+  const before = state.A.length + state.B.length;
+  pushHistory();
+  state.A = nondominated(state.A);
+  state.B = nondominated(state.B);
+  const after = state.A.length + state.B.length;
+  setMessage(`已刪除 ${before-after} 個 dominated solution。`);
+  render();
+}
+function hypervolume(S, ref){
+  let pts=nondominated(S).filter(p=>p.x<ref.x && p.y<ref.y).sort((a,b)=>a.x-b.x);
+  let hv=0, minY=ref.y;
+  for(const p of pts){
+    if(p.y < minY){ hv += (ref.x-p.x)*(minY-p.y); minY=p.y; }
+  }
+  return hv;
+}
+
+function make(tag, attrs={}, parent=svg){ const el=document.createElementNS('http://www.w3.org/2000/svg',tag); for(const [k,v] of Object.entries(attrs)) el.setAttribute(k,v); parent.appendChild(el); return el; }
+function clearSvg(){ svg.innerHTML=''; }
+function pathFromPts(pts){ return pts.map((p,i)=>(i?'L':'M')+sx(p.x).toFixed(1)+','+sy(p.y).toFixed(1)).join(' '); }
+
+function axisTicks(min,max,step=0.2){
+  const out=[];
+  let v=Math.ceil(min/step)*step;
+  for(; v<=max+EPS; v+=step) out.push(+v.toFixed(10));
+  return out;
+}
+function drawAxes(){
+  const v=state.view;
+  for(const t of axisTicks(v.xMin, v.xMax, 0.2)){
+    make('line',{x1:sx(t),y1:plot.y,x2:sx(t),y2:plot.y+plot.h,class:'grid'});
+    make('text',{x:sx(t),y:plot.y+plot.h+24,class:'ticktext','text-anchor':'middle'}).textContent=t.toFixed(1);
+  }
+  for(const t of axisTicks(v.yMin, v.yMax, 0.2)){
+    make('line',{x1:plot.x,y1:sy(t),x2:plot.x+plot.w,y2:sy(t),class:'grid'});
+    make('text',{x:plot.x-14,y:sy(t)+4,class:'ticktext','text-anchor':'end'}).textContent=t.toFixed(1);
+  }
+  make('line',{x1:plot.x,y1:plot.y+plot.h,x2:plot.x+plot.w,y2:plot.y+plot.h,class:'axis'});
+  make('line',{x1:plot.x,y1:plot.y,x2:plot.x,y2:plot.y+plot.h,class:'axis'});
+  make('text',{x:plot.x+plot.w/2,y:H-18,'text-anchor':'middle',fill:'#334155','font-size':'15'}).textContent='f₁ (minimize)';
+  make('text',{x:20,y:plot.y+plot.h/2,transform:`rotate(-90 20 ${plot.y+plot.h/2})`,'text-anchor':'middle',fill:'#334155','font-size':'15'}).textContent='f₂ (minimize)';
+}
+function drawHVFor(S, cls){
+  const ref={x:+document.getElementById('refX').value, y:+document.getElementById('refY').value};
+  const pts=nondominated(S).filter(p=>p.x<ref.x && p.y<ref.y).sort((a,b)=>a.x-b.x);
+  let minY=ref.y;
+  for(const p of pts){
+    if(p.y < minY){
+      make('rect',{x:sx(p.x), y:sy(minY), width:sx(ref.x)-sx(p.x), height:sy(p.y)-sy(minY), class:cls});
+      minY=p.y;
+    }
+  }
+  make('circle',{cx:sx(ref.x),cy:sy(ref.y),r:5,fill:'#111827'});
+  make('text',{x:sx(ref.x)-8,y:sy(ref.y)-10,'text-anchor':'end',fill:'#111827','font-size':'12'}).textContent='ref';
+}
+function drawOverlays(){
+  if(document.getElementById('showHV').checked){ drawHVFor(state.A,'hvRectA'); drawHVFor(state.B,'hvRectB'); }
+  if(document.getElementById('showGD').checked){
+    for(const [S,c] of [[state.A,'#2563eb'],[state.B,'#f97316']]) for(const p of S){ const n=nearestPoint(p,state.pf); if(n.point) make('line',{x1:sx(p.x),y1:sy(p.y),x2:sx(n.point.x),y2:sy(n.point.y),stroke:c,class:'overlayLine'}); }
+  }
+  if(document.getElementById('showIGD').checked){
+    for(const [S,c] of [[state.A,'#2563eb'],[state.B,'#f97316']]) if(S.length) for(let i=0;i<state.pf.length;i+=18){ const r=state.pf[i]; const n=nearestPoint(r,S); make('line',{x1:sx(r.x),y1:sy(r.y),x2:sx(n.point.x),y2:sy(n.point.y),stroke:c,class:'overlayLine'}); }
+  }
+  if(document.getElementById('showIGDPlus').checked){
+    for(const [S,c] of [[state.A,'#16a34a'],[state.B,'#dc2626']]) if(S.length) for(let i=0;i<state.pf.length;i+=18){ const r=state.pf[i]; const n=nearestPoint(r,S,(rr,aa)=>dPlus(rr,aa)); if(n.d>1e-6) make('line',{x1:sx(r.x),y1:sy(r.y),x2:sx(n.point.x),y2:sy(n.point.y),stroke:c,class:'overlayLine'}); }
+  }
+  if(document.getElementById('showSpacing').checked){
+    for(const [S,c] of [[state.A,'#2563eb'],[state.B,'#f97316']]) for(let i=0;i<S.length;i++){ const others=S.filter((_,j)=>j!==i); if(!others.length) continue; const n=nearestPoint(S[i],others); make('line',{x1:sx(S[i].x),y1:sy(S[i].y),x2:sx(n.point.x),y2:sy(n.point.y),stroke:c,class:'overlayLine'}); }
+  }
+}
+function drawPoints(){
+  for(const [name,S] of [['A',state.A],['B',state.B]]){
+    S.forEach((p,i)=>{
+      if(name==='A') make('circle',{cx:sx(p.x),cy:sy(p.y),r:7,class:'pointA','data-set':name,'data-i':i});
+      else make('path',{d:`M ${sx(p.x)} ${sy(p.y)-8} L ${sx(p.x)-8} ${sy(p.y)+7} L ${sx(p.x)+8} ${sy(p.y)+7} Z`,class:'pointB','data-set':name,'data-i':i});
+    });
+  }
+}
+function render(){
+  clearSvg(); drawAxes();
+  for(const seg of state.pfSegments) make('path',{d:pathFromPts(seg),class:'pf'});
+  drawOverlays(); drawPoints(); updateTable(); updateStatus();
+}
+
+function metricRows(){
+  const ref={x:+document.getElementById('refX').value, y:+document.getElementById('refY').value};
+  return [
+    {name:'GD ↓', a:gd(state.A,state.pf), b:gd(state.B,state.pf), better:'min', note:'解集合到 PF 的平均距離；主要看收斂'},
+    {name:'IGD ↓', a:igd(state.A,state.pf), b:igd(state.B,state.pf), better:'min', note:'PF 到解集合的平均距離；看覆蓋與收斂'},
+    {name:'IGD+ ↓', a:igdPlus(state.A,state.pf), b:igdPlus(state.B,state.pf), better:'min', note:'dominance-aware 的 IGD，只懲罰較差方向'},
+    {name:'HV ↑', a:hypervolume(state.A,ref), b:hypervolume(state.B,ref), better:'max', note:'被解集合支配的面積'},
+    {name:'Spacing ↓', a:spacing(state.A), b:spacing(state.B), better:'min', note:'最近鄰距離是否一致；看均勻度'},
+    {name:'ε ↓', a:epsilonUnary(state.A,state.pf), b:epsilonUnary(state.B,state.pf), better:'min', note:'還要平移多少才能 cover/reference PF'}
+  ];
+}
+function updateTable(){
+  const tbody=document.querySelector('#metricTable tbody'); tbody.innerHTML='';
+  for(const r of metricRows()){
+    let clsA='', clsB='', better='—';
+    if(isFinite(r.a)||isFinite(r.b)){
+      if(Math.abs(r.a-r.b)<1e-9){ better='<span class="tag tagTie">Tie</span>'; }
+      else if((r.better==='min' && r.a<r.b) || (r.better==='max' && r.a>r.b)){ clsA='better'; better='<span class="tag tagA">A</span>'; }
+      else { clsB='better'; better='<span class="tag tagB">B</span>'; }
+    }
+    tbody.insertAdjacentHTML('beforeend',`<tr><td>${r.name}</td><td class="${clsA}">${fmt(r.a)}</td><td class="${clsB}">${fmt(r.b)}</td><td>${better}</td></tr>`);
+  }
+}
+function countNondominated(S){ return nondominated(S).length; }
+function updateStatus(){
+  document.getElementById('status').textContent= state.message || `A: ${state.A.length} points, B: ${state.B.length} points`;
+  const stats=document.getElementById('setStats');
+  if(stats) stats.innerHTML = `Set A：${state.A.length} solutions，${countNondominated(state.A)} nondominated<br>Set B：${state.B.length} solutions，${countNondominated(state.B)} nondominated`;
+}
+function currentSet(){ return document.querySelector('input[name="editSet"]:checked').value; }
+
+function svgPt(evt){ const r=svg.getBoundingClientRect(); return {x:(evt.clientX-r.left)*W/r.width, y:(evt.clientY-r.top)*H/r.height}; }
+function findNearestScreen(px,py){
+  let best={set:null,i:-1,d:Infinity};
+  for(const name of ['A','B']) state[name].forEach((p,i)=>{ const d=Math.hypot(sx(p.x)-px, sy(p.y)-py); if(d<best.d) best={set:name,i,d}; });
+  return best;
+}
+svg.addEventListener('pointerdown', e=>{
+  e.preventDefault();
+  const p=svgPt(e);
+  if(p.x<plot.x||p.x>plot.x+plot.w||p.y<plot.y||p.y>plot.y+plot.h) return;
+  const n=findNearestScreen(p.x,p.y);
+  if(e.shiftKey){
+    if(n.d<24){ pushHistory(); state[n.set].splice(n.i,1); render(); }
+    else setMessage('附近沒有可刪除的點。');
+    return;
+  }
+  if(n.d<14){
+    pushHistory();
+    state.drag={set:n.set,i:n.i,last:{...state[n.set][n.i]}};
+    svg.setPointerCapture(e.pointerId);
+    return;
+  }
+  const q={x:dx(p.x), y:dy(p.y)};
+  pushHistory();
+  if(!addLegalPoint(currentSet(), q)) state.history.pop();
+  render();
+});
+svg.addEventListener('pointermove', e=>{
+  if(!state.drag) return;
+  e.preventDefault();
+  const p=svgPt(e);
+  const q={x:dx(p.x), y:dy(p.y)};
+  const target=state[state.drag.set][state.drag.i];
+  if(isLegalPoint(q)){ target.x=q.x; target.y=q.y; state.drag.last={...q}; }
+  else { target.x=state.drag.last.x; target.y=state.drag.last.y; }
+  render();
+});
+svg.addEventListener('pointerup', e=>{ if(state.drag){ e.preventDefault(); state.drag=null; } });
+svg.addEventListener('pointerleave', e=>{ if(state.drag){ state.drag=null; } });
+
+function setExample(kind){
+  pushHistory(); state.A=[]; state.B=[];
+  if(kind===4){
+    // This example is constructed on ZDT1 so that IGD favors B, but IGD+ favors A.
+    state.pfType='zdt1';
+    document.getElementById('pfSelect').value='zdt1';
+    setPF('zdt1');
+    state.A=[
+      {x:0.1713,y:0.8319}, {x:0.7830,y:1.1500}, {x:0.3915,y:1.0277},
+      {x:0.1957,y:1.1011}, {x:0.1223,y:0.6851}
+    ];
+    state.B=[
+      {x:0.2447,y:1.1255}, {x:1.0277,y:1.0032}, {x:0.5383,y:0.7830},
+      {x:0.9543,y:0.9053}, {x:1.1011,y:0.2936}
+    ];
+  }else{
+    const pf=state.pf;
+    function samplePF(fracs, offset=0){ return fracs.map(f=>{ const p=pf[Math.min(pf.length-1,Math.max(0,Math.floor(f*(pf.length-1))))]; return {x:p.x+offset, y:p.y+offset}; }); }
+    if(kind===1){ state.A=samplePF([.05,.08,.11,.14,.17],0.01); state.B=samplePF([.05,.25,.45,.65,.85],0.09); }
+    if(kind===2){ state.A=samplePF([.08,.28,.48,.68,.88],0.035); state.B=samplePF([.08,.10,.12,.55,.90],0.035); }
+    if(kind===3){ state.A=samplePF([.05,.20,.40,.60,.80,.96],0.04); state.B=samplePF([.22,.38,.54,.70],0.02); }
+  }
+  state.A=sanitizeSet(state.A); state.B=sanitizeSet(state.B);
+  render();
+}
+
+document.getElementById('pfSelect').addEventListener('change', e=>{ state.pfType=e.target.value; setPF(state.pfType); state.A=sanitizeSet(state.A); state.B=sanitizeSet(state.B); render(); });
+for(const id of ['showGD','showIGD','showIGDPlus','showHV','showSpacing']) document.getElementById(id).addEventListener('change',render);
+for(const id of ['refX','refY']) document.getElementById(id).addEventListener('input',render);
+document.getElementById('clearA').onclick=()=>{pushHistory(); state.A=[]; render();};
+document.getElementById('clearB').onclick=()=>{pushHistory(); state.B=[]; render();};
+document.getElementById('reset').onclick=()=>{pushHistory(); state.A=[]; state.B=[]; render();};
+document.getElementById('undo').onclick=()=>{ const h=state.history.pop(); if(h){ setHistory(h); render(); } };
+document.getElementById('pruneDominated').onclick=removeDominatedSolutions;
+document.getElementById('ex1').onclick=()=>setExample(1);
+document.getElementById('ex2').onclick=()=>setExample(2);
+document.getElementById('ex3').onclick=()=>setExample(3);
+document.getElementById('ex4').onclick=()=>setExample(4);
+
+setPF(state.pfType);
+setExample(1);
+</script>
+</body>
+</html>
