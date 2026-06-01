@@ -12,4 +12,5 @@ Small interactive tools for learning metaheuristics
 | [GP: Santa Fe Trail](https://tcchiang.github.io/metaheuristics-gadgets/santa-fe-trail-genetic-programming.html) | Genetic programming: Solving the Santa Fe Trail problem|
 | [Lamarckian vs. Baldwinian](https://tcchiang.github.io/metaheuristics-gadgets/baldwin-lamarck-visualizer.html) | Memetic algorithm: Lamarckian vs. Baldwinian |
 | [EMO Metric Playground](https://tcchiang.github.io/metaheuristics-gadgets/emo-metric-playground.html) | Playing with EMO performance metrics including IGD and HV |
-| [EMO: Scalarization Explorer](https://tcchiang.github.io/metaheuristics-gadgets/scalarization-explorer-v2.html) | WS vs. TCH vs. PBI |
+| [EMO: NSGA-II vs. SPEA2 Visualization](https://tcchiang.github.io/metaheuristics-gadgets/emo-nsga2-spea2.html) | Visualization of NSGA-II and SPEA2 |
+| [EMO: Scalarization Explorer](https://tcchiang.github.io/metaheuristics-gadgets/emo-scalarization-explorer.html) | WS vs. TCH vs. PBI |
