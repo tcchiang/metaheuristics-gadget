@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NSGA-II vs SPEA2 Evolution Lab</title>
+<style>
+  :root{
+    --bg:#f6f7fb; --panel:#ffffff; --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb;
+    --blue:#2563eb; --green:#059669; --accent:#7c3aed; --danger:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;background:var(--bg);color:var(--ink)}
+  header{padding:18px 22px 10px;background:linear-gradient(120deg,#eef2ff,#ecfdf5);border-bottom:1px solid var(--line)}
+  h1{margin:0;font-size:24px;letter-spacing:.2px} .subtitle{margin-top:6px;color:var(--muted);font-size:14px}
+  main{display:grid;grid-template-columns:360px 1fr;gap:14px;padding:14px;max-width:1680px;margin:auto}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 8px 24px rgba(15,23,42,.06)}
+  .left{display:flex;flex-direction:column;gap:14px}.card h2{font-size:16px;margin:0 0 12px}.section{padding:16px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid1{display:grid;grid-template-columns:1fr;gap:10px}
+  label{font-size:12px;color:#374151;font-weight:650;display:block;margin-bottom:4px}
+  input,select{width:100%;padding:8px 9px;border:1px solid #d1d5db;border-radius:10px;background:#fff;color:#111827;font-size:14px}
+  input[type="checkbox"]{width:auto;vertical-align:middle;margin-right:6px}
+  button{border:none;border-radius:12px;padding:9px 11px;font-weight:700;cursor:pointer;background:#eef2ff;color:#3730a3;transition:.15s}
+  button:hover:not(:disabled){transform:translateY(-1px);filter:brightness(.98)}button.primary{background:#4f46e5;color:white}button.green{background:#059669;color:white}button.gray{background:#f3f4f6;color:#374151}button.red{background:#fee2e2;color:#991b1b}button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+  .btnrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}.wide{grid-column:1/-1}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.42);display:none;align-items:center;justify-content:center;z-index:50;padding:18px}
+  .modal{width:min(460px,100%);background:#fff;border-radius:20px;box-shadow:0 24px 70px rgba(15,23,42,.24);padding:20px;border:1px solid var(--line)}
+  .modal h3{margin:0 0 10px;font-size:18px}.modal p{color:#4b5563;line-height:1.65}.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px} .hint{font-size:12px;color:var(--muted);font-weight:500}
+  .viz{display:grid;grid-template-rows:auto 1fr auto;gap:14px}.plots{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .plot-card{padding:12px}.plot-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.plot-title{font-size:15px;font-weight:800}.badge{font-size:12px;color:var(--muted)}
+  canvas{width:100%;height:420px;border-radius:14px;background:#fff;border:1px solid #eef0f3;display:block}.perf canvas{height:390px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:8px}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.blue{background:var(--blue)}.green{background:var(--green)}.gray{background:#c7c7c7}.pale-blue{background:#9db7f7}.pale-green{background:#9ad9c1}
+  .status{padding:12px 16px;color:#374151;font-size:13px;border-top:1px solid var(--line);background:#fafafa;border-radius:0 0 18px 18px;min-height:44px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .notes{font-size:12px;color:var(--muted);line-height:1.55}.checklist{font-size:13px;line-height:1.7}.ok{color:#047857;font-weight:800}.warn{color:#b45309;font-weight:800}
+  @media(max-width:1100px){main{grid-template-columns:1fr}.plots{grid-template-columns:1fr}canvas{height:360px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>NSGA-II vs SPEA2：Single-run Evolution Process & Multi-run Boxplot Comparison</h1>
+  <div class="subtitle">ZDT1 / ZDT2 / ZDT3 · SBX crossover · Polynomial mutation · HV curve / HV boxplot · history trail modes</div>
+</header>
+<main>
+  <aside class="left">
+    <section class="card section">
+      <h2>實驗設定區</h2>
+      <div class="grid2">
+        <div><label>實驗函式</label><select id="problem"><option>ZDT1</option><option>ZDT2</option><option>ZDT3</option><option>ZDT4</option><option>ZDT6</option></select></div>
+        <div><label>變數維度</label><input id="dim" type="number" value="30" min="2" max="100"></div>
+        <div><label>Population size</label><input id="popSize" type="number" value="100" min="10" max="400" step="2"></div>
+        <div><label>Generation number</label><input id="maxGen" type="number" value="100" min="1" max="1000"></div>
+        <div><label>SBX crossover prob.</label><input id="pc" type="number" value="0.9" min="0" max="1" step="0.01"></div>
+        <div><label>SBX eta</label><input id="etaC" type="number" value="20" min="1" max="100"></div>
+        <div><label>Mutation prob. 空白=1/d</label><input id="pm" type="text" value=""></div>
+        <div><label>Polynomial mutation eta</label><input id="etaM" type="number" value="20" min="1" max="100"></div>
+        <div><label>SPEA2 archive size</label><input id="archiveSize" type="number" value="100" min="5" max="500"></div>
+        <div><label>Number of runs</label><input id="runs" type="number" value="30" min="2" max="100"></div>
+        <div><label>Random seed</label><input id="seed" type="number" value="2026"></div>
+        <div><label>播放速度 ms/gen</label><input id="speed" type="number" value="180" min="30" max="2000"></div>
+      </div>
+    </section>
+
+    <section class="card section">
+      <h2>視覺化進階選項</h2>
+      <div class="grid1">
+        <label title="SPEA2 圖形主要顯示 archive，因為 archive 才是 SPEA2 經 environmental selection 後保留下來的精英集合。取消勾選時，則改看目前 offspring population。"><input id="showArchive" type="checkbox" checked>SPEA2 圖形顯示 archive ⓘ</label>
+        <div><label>History trail mode</label><select id="trailMode"><option value="none">關閉：只顯示當代族群</option><option value="points" selected>最近 N 代歷史點</option><option value="centroid">Centroid trail</option><option value="front">Nondominated-front trail</option></select></div>
+        <div class="grid2">
+          <div><label>最近 N 代</label><input id="trailN" type="number" value="1" min="1" max="5"></div>
+          <div><label title="每一代歷史族群中，有多少比例的點會被抽樣顯示；1.0 表示全部顯示，0.3 表示約顯示 30%。">歷史點取樣比例 ⓘ</label><input id="trailSample" type="number" value="1.0" min="0.05" max="1" step="0.05" title="每一代歷史族群中，有多少比例的點會被抽樣顯示；1.0 表示全部顯示，0.3 表示約顯示 30%。"></div>
+        </div>
+      </div>
+      <p class="notes">歷史點不使用 fitness 深淺，只用固定淡色、小點與透明度，避免與當代族群混淆。</p>
+    </section>
+
+    <section class="card section">
+      <h2>執行按鈕區</h2>
+      <div class="btnrow">
+        <button class="gray action-btn" id="resetBtn">Reset</button>
+        <button class="action-btn" id="stepBtn">演化一代</button>
+        <button class="action-btn" id="playBtn">播放 / 暫停</button>
+        <button class="primary action-btn" id="runBtn">演化至結束</button>
+        <button class="green wide action-btn" id="batchBtn">批次執行</button>
+      </div>
+    </section>
+  </aside>
+
+  <section class="viz">
+    <div class="plots">
+      <div class="card plot-card"><div class="plot-head"><span class="plot-title">NSGA-II 目標空間</span><span id="nsgaInfo" class="badge"></span></div><canvas id="nsgaCanvas" width="760" height="520"></canvas></div>
+      <div class="card plot-card"><div class="plot-head"><span class="plot-title">SPEA2 目標空間</span><span id="speaInfo" class="badge"></span></div><canvas id="speaCanvas" width="760" height="520"></canvas></div>
+    </div>
+    <div class="legend"><span><i class="dot gray"></i>Reference front</span><span><i class="dot blue"></i>NSGA-II current population</span><span><i class="dot green"></i>SPEA2 archive / population</span><span>× 歷史族群 / trail</span></div>
+    <div class="card plot-card perf"><div class="plot-head"><span class="plot-title" id="perfTitle">效能比較區：Hypervolume over generations</span><span class="badge"><label style="display:inline;font-size:12px;margin-right:6px">效能指標</label><select id="metric" style="width:auto;padding:5px 8px;font-size:12px"><option value="HV">HV</option><option value="IGD">IGD</option></select> <span id="metricHint">HV: larger is better</span></span></div><canvas id="perfCanvas" width="1540" height="440"></canvas></div>
+    <div class="card status" id="status">尚未執行。按 Reset 會讓兩種演算法從同一個 initial population 開始。</div>
+  </section>
+</main>
+<div class="modal-backdrop" id="batchModal">
+  <div class="modal">
+    <h3>確認批次執行</h3>
+    <p id="batchModalText"></p>
+    <p class="hint">提醒：批次執行需時較久，執行期間其它按鈕會暫時停用，請耐心等候。</p>
+    <div class="modal-actions">
+      <button class="gray" id="cancelBatchBtn">取消</button>
+      <button class="green" id="confirmBatchBtn">確認</button>
+    </div>
+  </div>
+</div>
+<script>
+'use strict';
+class RNG{constructor(seed){this.s=seed>>>0||1} next(){this.s=(1664525*this.s+1013904223)>>>0;return this.s/4294967296} int(n){return Math.floor(this.next()*n)} clone(){const r=new RNG(1);r.s=this.s;return r}}
+const $=id=>document.getElementById(id);
+const cfg=()=>{const d=+$('dim').value;let pm=$('pm').value.trim()===''?1/d:+$('pm').value;return {problem:$('problem').value,dim:d,popSize:+$('popSize').value,maxGen:+$('maxGen').value,pc:+$('pc').value,etaC:+$('etaC').value,pm,etaM:+$('etaM').value,archiveSize:+$('archiveSize').value,runs:+$('runs').value,seed:+$('seed').value,trailMode:$('trailMode').value,trailN:+$('trailN').value,trailSample:+$('trailSample').value,showArchive:$('showArchive').checked,speed:+$('speed').value}};
+function zdt(x,p){
+  let f1=x[0],g,h;
+  if(p==='ZDT4'){
+    g=1+10*(x.length-1)+x.slice(1).reduce((a,xi)=>a+xi*xi-10*Math.cos(4*Math.PI*xi),0);
+    h=1-Math.sqrt(f1/g);
+  }else if(p==='ZDT6'){
+    f1=1-Math.exp(-4*x[0])*Math.pow(Math.sin(6*Math.PI*x[0]),6);
+    g=1+9*Math.pow(x.slice(1).reduce((a,b)=>a+b,0)/(x.length-1),0.25);
+    h=1-Math.pow(f1/g,2);
+  }else{
+    g=1+9*x.slice(1).reduce((a,b)=>a+b,0)/(x.length-1);
+    if(p==='ZDT1')h=1-Math.sqrt(f1/g);else if(p==='ZDT2')h=1-(f1/g)**2;else h=1-Math.sqrt(f1/g)-(f1/g)*Math.sin(10*Math.PI*f1);
+  }
+  return [f1,g*h]
+}
+function randomX(d,rng,p){
+  const x=Array.from({length:d},()=>rng.next());
+  // ZDT4: x1 in [0,1], xi in [-5,5] for i>=2.
+  if(p==='ZDT4') for(let i=1;i<d;i++) x[i]=-5+10*rng.next();
+  return x;
+}
+function boundsForVar(i,p){return (p==='ZDT4'&&i>0)?[-5,5]:[0,1]}
+function refFront(p,n=500){
+  let pts=[];
+  for(let i=0;i<n;i++){
+    let t=i/(n-1),f1=t,f2;
+    if(p==='ZDT1'||p==='ZDT4')f2=1-Math.sqrt(f1);
+    else if(p==='ZDT2'||p==='ZDT6')f2=1-f1*f1;
+    else f2=1-Math.sqrt(f1)-f1*Math.sin(10*Math.PI*f1);
+    if(p==='ZDT6'){
+      // ZDT6 Pareto front starts at f1 around 0.280775 rather than 0.
+      const fmin=1-Math.exp(-4)*Math.pow(Math.sin(6*Math.PI),6);
+      f1=0.2807753191 + t*(1-0.2807753191);
+      f2=1-f1*f1;
+    }
+    if(p!=='ZDT3'||isZDT3PF(f1))pts.push([f1,f2])
+  }
+  return pts
+}
+function isZDT3PF(f1){return [[0,0.0830015349],[0.182228728,0.2577623634],[0.4093136748,0.4538821041],[0.6183967944,0.6525117038],[0.8233317983,0.8518328654]].some(([a,b])=>f1>=a&&f1<=b)}
+function dominates(a,b){return (a.f[0]<=b.f[0]&&a.f[1]<=b.f[1])&&(a.f[0]<b.f[0]||a.f[1]<b.f[1])}
+function makePop(n,d,rng,p){return Array.from({length:n},()=>{const x=randomX(d,rng,p);return {x,f:zdt(x,p)}})}
+function clonePop(pop){return pop.map(o=>({x:o.x.slice(),f:o.f.slice(),rank:o.rank,crowd:o.crowd,fit:o.fit,strength:o.strength,raw:o.raw,density:o.density}))}
+function ndSort(pop){const S=Array(pop.length).fill(0).map(()=>[]),n=Array(pop.length).fill(0),fronts=[[]];for(let i=0;i<pop.length;i++){for(let j=0;j<pop.length;j++){if(i===j)continue;if(dominates(pop[i],pop[j]))S[i].push(j);else if(dominates(pop[j],pop[i]))n[i]++}if(n[i]===0){pop[i].rank=0;fronts[0].push(i)}}let k=0;while(fronts[k].length){const next=[];for(const i of fronts[k])for(const j of S[i]){n[j]--;if(n[j]===0){pop[j].rank=k+1;next.push(j)}}k++;fronts[k]=next}fronts.pop();return fronts.map(fr=>fr.map(i=>pop[i]))}
+function crowding(front){if(!front.length)return;front.forEach(o=>o.crowd=0);for(let m=0;m<2;m++){front.sort((a,b)=>a.f[m]-b.f[m]);front[0].crowd=front[front.length-1].crowd=Infinity;let min=front[0].f[m],max=front[front.length-1].f[m],den=max-min||1;for(let i=1;i<front.length-1;i++)front[i].crowd+=(front[i+1].f[m]-front[i-1].f[m])/den}}
+function assignNSGA(pop){const fronts=ndSort(pop);fronts.forEach(crowding);return fronts}
+function nsgaBetter(a,b){return a.rank!==b.rank?a.rank<b.rank:a.crowd>b.crowd}
+function tournament(pop,rng,cmp){const a=pop[rng.int(pop.length)],b=pop[rng.int(pop.length)];return cmp(a,b)?a:b}
+function sbx(x1,x2,c,rng){const y1=x1.slice(),y2=x2.slice();if(rng.next()>c.pc)return [y1,y2];for(let i=0;i<c.dim;i++){const [lb,ub]=boundsForVar(i,c.problem);if(rng.next()<=0.5&&Math.abs(x1[i]-x2[i])>1e-14){let a=Math.min(x1[i],x2[i]),b=Math.max(x1[i],x2[i]),u,beta,alpha,betaq;u=rng.next();beta=1+2*(a-lb)/(b-a);alpha=2-Math.pow(beta,-(c.etaC+1));betaq=u<=1/alpha?Math.pow(u*alpha,1/(c.etaC+1)):Math.pow(1/(2-u*alpha),1/(c.etaC+1));let c1=.5*((a+b)-betaq*(b-a));beta=1+2*(ub-b)/(b-a);alpha=2-Math.pow(beta,-(c.etaC+1));betaq=u<=1/alpha?Math.pow(u*alpha,1/(c.etaC+1)):Math.pow(1/(2-u*alpha),1/(c.etaC+1));let c2=.5*((a+b)+betaq*(b-a));c1=Math.min(ub,Math.max(lb,c1));c2=Math.min(ub,Math.max(lb,c2));if(rng.next()<=.5){y1[i]=c2;y2[i]=c1}else{y1[i]=c1;y2[i]=c2}}}return [y1,y2]}
+function polyMut(x,c,rng){const y=x.slice();for(let i=0;i<y.length;i++)if(rng.next()<c.pm){const [lb,ub]=boundsForVar(i,c.problem);let u=rng.next(),delta=u<.5?Math.pow(2*u,1/(c.etaM+1))-1:1-Math.pow(2*(1-u),1/(c.etaM+1));y[i]=Math.min(ub,Math.max(lb,y[i]+delta*(ub-lb)))}return y}
+function offspring(pool,n,c,rng,cmp){const kids=[];while(kids.length<n){let p1=tournament(pool,rng,cmp),p2=tournament(pool,rng,cmp),[a,b]=sbx(p1.x,p2.x,c,rng);a=polyMut(a,c,rng);b=polyMut(b,c,rng);kids.push({x:a,f:zdt(a,c.problem)});if(kids.length<n)kids.push({x:b,f:zdt(b,c.problem)})}return kids}
+class NSGA2{constructor(init,c,seed){this.c=c;this.rng=new RNG(seed);this.pop=clonePop(init);this.gen=0;this.hv=[];this.igd=[];this.history=[];assignNSGA(this.pop);this.record()} step(){const kids=offspring(this.pop,this.c.popSize,this.c,this.rng,nsgaBetter);const combined=this.pop.concat(kids);const fronts=assignNSGA(combined);const next=[];for(const fr of fronts){if(next.length+fr.length<=this.c.popSize)next.push(...fr);else{fr.sort((a,b)=>b.crowd-a.crowd);next.push(...fr.slice(0,this.c.popSize-next.length));break}}this.pop=clonePop(next);assignNSGA(this.pop);this.gen++;this.record()} record(){this.hv.push(hvND(this.pop,this.c.problem));this.igd.push(igd(this.pop,this.c.problem));this.history.push(clonePop(this.pop));if(this.history.length>8)this.history.shift()}}
+function assignSPEA(union){const N=union.length;union.forEach(o=>{o.strength=0;o.raw=0;o.density=0;o.fit=0});for(let i=0;i<N;i++)for(let j=0;j<N;j++)if(i!==j&&dominates(union[i],union[j]))union[i].strength++;for(let i=0;i<N;i++)for(let j=0;j<N;j++)if(i!==j&&dominates(union[j],union[i]))union[i].raw+=union[j].strength;for(let i=0;i<N;i++){const ds=[];for(let j=0;j<N;j++)if(i!==j){let dx=union[i].f[0]-union[j].f[0],dy=union[i].f[1]-union[j].f[1];ds.push(Math.hypot(dx,dy))}ds.sort((a,b)=>a-b);let k=Math.max(0,Math.floor(Math.sqrt(N))-1);union[i].density=1/(ds[k]+2);union[i].fit=union[i].raw+union[i].density}}
+function speaBetter(a,b){return a.fit<b.fit}
+function truncateArchive(A,size){
+  // SPEA2 truncation：反覆刪除與其他 archive members 最接近的解。
+  // 比較時必須使用「排序後距離向量」的數值字典序，而不是字串比較。
+  const lexLess=(a,b)=>{
+    for(let i=0;i<Math.min(a.length,b.length);i++){
+      if(Math.abs(a[i]-b[i])>1e-12) return a[i]<b[i];
+    }
+    return a.length<b.length;
+  };
+  while(A.length>size){
+    let removeIdx=0, bestSig=null;
+    for(let i=0;i<A.length;i++){
+      const ds=[];
+      for(let j=0;j<A.length;j++) if(i!==j){
+        ds.push(Math.hypot(A[i].f[0]-A[j].f[0],A[i].f[1]-A[j].f[1]));
+      }
+      ds.sort((a,b)=>a-b);
+      if(bestSig===null || lexLess(ds,bestSig)){
+        bestSig=ds;
+        removeIdx=i;
+      }
+    }
+    A.splice(removeIdx,1);
+  }
+  return A;
+}
+class SPEA2{constructor(init,c,seed){this.c=c;this.rng=new RNG(seed);this.pop=clonePop(init);this.archive=[];this.gen=0;this.hv=[];this.igd=[];this.history=[];this.updateArchive();this.record()} updateArchive(){const union=clonePop(this.pop).concat(clonePop(this.archive));assignSPEA(union);let A=union.filter(o=>o.fit<1);if(A.length<this.c.archiveSize){union.sort((a,b)=>a.fit-b.fit);for(const o of union)if(!A.includes(o)&&A.length<this.c.archiveSize)A.push(o)}else if(A.length>this.c.archiveSize)A=truncateArchive(A,this.c.archiveSize);this.archive=clonePop(A);assignSPEA(this.archive.concat(this.pop))} step(){const pool=this.archive.length?this.archive:this.pop;assignSPEA(pool);this.pop=offspring(pool,this.c.popSize,this.c,this.rng,speaBetter);this.updateArchive();this.gen++;this.record()} record(){
+  // HV 用 archive 評估，因為 SPEA2 的精英集合是 archive。
+  this.hv.push(hvND(this.archive.length?this.archive:this.pop,this.c.problem));
+  this.igd.push(igd(this.archive.length?this.archive:this.pop,this.c.problem));
+  // history trail 表示 past archive，和目前 SPEA2 圖形主體一致。
+  this.history.push(clonePop(this.archive.length?this.archive:this.pop));
+  if(this.history.length>8)this.history.shift()
+}}
+function nondom(pop){return pop.filter(a=>!pop.some(b=>b!==a&&dominates(b,a)))}
+function refPoint(problem){return problem==='ZDT3'?[1.15,1.25]:[1.1,1.1]}
+function hvND(pop,problem){const ref=refPoint(problem);let pts=nondom(pop).map(o=>o.f).filter(p=>p[0]<=ref[0]&&p[1]<=ref[1]).sort((a,b)=>a[0]-b[0]);let hv=0,prev=ref[1];for(const p of pts){if(p[1]<prev){hv+=(ref[0]-p[0])*(prev-p[1]);prev=p[1]}}return hv}
+function igd(pop,problem){const nd=nondom(pop).map(o=>o.f);const rf=refFront(problem,300);if(!nd.length)return Infinity;let sum=0;for(const r of rf){let best=Infinity;for(const p of nd){const d=Math.hypot(r[0]-p[0],r[1]-p[1]);if(d<best)best=d}sum+=best}return sum/rf.length}
+function metricValue(pop,problem,metric){return metric==='IGD'?igd(pop,problem):hvND(pop,problem)}
+function scaleDomain(problem, alg, type, c){
+  const pts=[];
+  const pushPop=p=>p&&p.forEach(o=>pts.push(o.f));
+  pushPop(alg.pop);
+  if(type==='spea') pushPop(alg.archive);
+  const rf=refFront(problem);
+  // 只納入 reference front 的合理範圍，避免 ZDT3 的斷裂區域讓畫面過度放大。
+  rf.forEach(p=>pts.push(p));
+  let xs=pts.map(p=>p[0]).filter(Number.isFinite), ys=pts.map(p=>p[1]).filter(Number.isFinite);
+  let xmin=Math.min(...xs), xmax=Math.max(...xs), ymin=Math.min(...ys), ymax=Math.max(...ys);
+  let xpad=Math.max(0.05,(xmax-xmin)*0.08), ypad=Math.max(0.08,(ymax-ymin)*0.08);
+  xmin=Math.max(-0.05,xmin-xpad); xmax=xmax+xpad;
+  ymin=ymin-ypad; ymax=ymax+ypad;
+  if(problem!=='ZDT3') ymin=Math.max(-0.05,ymin);
+  if(Math.abs(xmax-xmin)<1e-9){xmax=xmin+1}
+  if(Math.abs(ymax-ymin)<1e-9){ymax=ymin+1}
+  return {xmin,xmax,ymin,ymax};
+}
+function drawScatter(canvas,alg,type,c){const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height,pad=48,dom=scaleDomain(c.problem,alg,type,c);ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);const sx=x=>pad+(x-dom.xmin)/(dom.xmax-dom.xmin)*(W-pad*1.35),sy=y=>H-pad-(y-dom.ymin)/(dom.ymax-dom.ymin)*(H-pad*1.35);
+  ctx.strokeStyle='#e5e7eb';ctx.lineWidth=1;for(let i=0;i<=5;i++){let x=pad+i*(W-pad*1.35)/5,y=H-pad-i*(H-pad*1.35)/5;ctx.beginPath();ctx.moveTo(x,pad*.55);ctx.lineTo(x,H-pad);ctx.stroke();ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad*.35,y);ctx.stroke()}ctx.strokeStyle='#9ca3af';ctx.beginPath();ctx.moveTo(pad,pad*.55);ctx.lineTo(pad,H-pad);ctx.lineTo(W-pad*.35,H-pad);ctx.stroke();ctx.fillStyle='#6b7280';ctx.font='12px system-ui';
+  for(let i=0;i<=5;i++){
+    const xv=dom.xmin+i*(dom.xmax-dom.xmin)/5;
+    const yv=dom.ymin+i*(dom.ymax-dom.ymin)/5;
+    const x=pad+i*(W-pad*1.35)/5;
+    const y=H-pad-i*(H-pad*1.35)/5;
+    ctx.textAlign='center';ctx.fillText(xv.toFixed(2),x,H-pad+18);
+    ctx.textAlign='right';ctx.fillText(yv.toFixed(2),pad-8,y+4);
+  }
+  ctx.textAlign='left';ctx.fillText('f1',W-34,H-24);ctx.fillText('f2',18,24);
+  const rf=refFront(c.problem);ctx.fillStyle='rgba(130,130,130,.35)';for(const p of rf){ctx.beginPath();ctx.arc(sx(p[0]),sy(p[1]),1.6,0,Math.PI*2);ctx.fill()}
+  drawTrail(ctx,alg,type,c,sx,sy);
+  let pop=(type==='spea'&&c.showArchive&&alg.archive.length)?alg.archive:alg.pop;
+  let vals=type==='nsga'?pop.map(o=>{
+    const cd=Number.isFinite(o.crowd)?o.crowd:1e12;
+    return (o.rank??0) + 1/(1+cd);
+  }):pop.map(o=>o.fit??0);
+  let min=Math.min(...vals),max=Math.max(...vals),den=max-min||1;
+  for(let i=0;i<pop.length;i++){
+    let o=pop[i];
+    let q=1-(vals[i]-min)/den;
+    // NSGA-II：顏色分數 = rank + 1/(1+crowding distance)，值越小代表環境選擇優先權越高，顏色越深。
+    let alpha=type==='nsga'?(.30+.70*q):(.25+.75*q);
+    ctx.fillStyle=type==='nsga'?`rgba(37,99,235,${alpha})`:`rgba(5,150,105,${alpha})`;
+    ctx.beginPath();ctx.arc(sx(o.f[0]),sy(o.f[1]),4.2,0,Math.PI*2);ctx.fill()
+  }
+  if(type==='spea'&&c.showArchive&&alg.archive.length){
+    // 目前 SPEA2 圖形的主體就是 archive，因此不再額外畫 archive 外框，避免重複標示。
+  }
+}
+function drawTrail(ctx,alg,type,c,sx,sy){
+  if(c.trailMode==='none')return;
+  const hist=alg.history.slice(Math.max(0,alg.history.length-1-c.trailN),alg.history.length-1);
+  const drawX=(x,y,r=3)=>{ctx.beginPath();ctx.moveTo(x-r,y-r);ctx.lineTo(x+r,y+r);ctx.moveTo(x+r,y-r);ctx.lineTo(x-r,y+r);ctx.stroke()};
+  if(c.trailMode==='points'){
+    // 歷史族群固定用黑色小 x，不再沿用演算法色系，避免與當代 fitness 深淺混淆。
+    ctx.strokeStyle='rgba(0,0,0,.32)';ctx.lineWidth=1;
+    for(const gen of hist)for(const o of gen){if(Math.random()>c.trailSample)continue;drawX(sx(o.f[0]),sy(o.f[1]),3)}
+  }else if(c.trailMode==='centroid'){
+    ctx.strokeStyle='rgba(0,0,0,.45)';ctx.fillStyle='rgba(0,0,0,.45)';ctx.lineWidth=2;ctx.beginPath();
+    hist.forEach((gen,i)=>{let x=gen.reduce((a,o)=>a+o.f[0],0)/gen.length,y=gen.reduce((a,o)=>a+o.f[1],0)/gen.length;if(i===0)ctx.moveTo(sx(x),sy(y));else ctx.lineTo(sx(x),sy(y))});ctx.stroke();
+    hist.forEach(gen=>{let x=gen.reduce((a,o)=>a+o.f[0],0)/gen.length,y=gen.reduce((a,o)=>a+o.f[1],0)/gen.length;drawX(sx(x),sy(y),4)})
+  }else if(c.trailMode==='front'){
+    ctx.strokeStyle='rgba(0,0,0,.30)';ctx.lineWidth=1.4;
+    for(const gen of hist){const fr=nondom(gen).map(o=>o.f).sort((a,b)=>a[0]-b[0]);ctx.beginPath();fr.forEach((p,i)=>i?ctx.lineTo(sx(p[0]),sy(p[1])):ctx.moveTo(sx(p[0]),sy(p[1])));ctx.stroke()}
+  }
+}
+function drawPerf(){const c=cfg(),metric=$('metric').value,ctx=$('perfCanvas').getContext('2d'),W=$('perfCanvas').width,H=$('perfCanvas').height,pad=58;ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#e5e7eb';for(let i=0;i<=5;i++){let y=H-pad-i*(H-pad*1.35)/5;ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad*.45,y);ctx.stroke()}ctx.strokeStyle='#9ca3af';ctx.beginPath();ctx.moveTo(pad,pad*.5);ctx.lineTo(pad,H-pad);ctx.lineTo(W-pad*.45,H-pad);ctx.stroke();if(batchResult){drawBoxplot(ctx,W,H,pad,batchResult,metric);return}let a=metric==='IGD'?state.nsga.igd:state.nsga.hv,b=metric==='IGD'?state.spea.igd:state.spea.hv,max=Math.max(...a,...b,1e-9),n=Math.max(a.length,b.length);const sx=i=>pad+i/(Math.max(1,n-1))*(W-pad*1.5),sy=v=>H-pad-v/max*(H-pad*1.5);
+  ctx.fillStyle='#6b7280';ctx.font='12px system-ui';
+  for(let i=0;i<=5;i++){
+    const gv=Math.round(i*(Math.max(1,n-1))/5);
+    const hv=max*i/5;
+    ctx.textAlign='center';ctx.fillText(String(gv),sx(gv),H-pad+18);
+    ctx.textAlign='right';ctx.fillText(hv.toFixed(3),pad-8,sy(hv)+4);
+  }
+  ctx.textAlign='left';function line(arr,col){ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.beginPath();arr.forEach((v,i)=>i?ctx.lineTo(sx(i),sy(v)):ctx.moveTo(sx(i),sy(v)));ctx.stroke()}line(a,'#2563eb');line(b,'#059669');ctx.fillStyle='#374151';ctx.font='13px system-ui';ctx.fillText('generation',W/2,H-12);ctx.fillText(metric,18,24);ctx.fillStyle='#2563eb';ctx.fillText('NSGA-II',W-160,34);ctx.fillStyle='#059669';ctx.fillText('SPEA2',W-90,34)}
+function quartiles(arr){const a=arr.slice().sort((x,y)=>x-y),q=p=>{let i=(a.length-1)*p,lo=Math.floor(i),hi=Math.ceil(i);return a[lo]+(a[hi]-a[lo])*(i-lo)};return {min:a[0],q1:q(.25),med:q(.5),q3:q(.75),max:a[a.length-1]}}
+function drawBoxplot(ctx,W,H,pad,res,metric){$('perfTitle').textContent=`效能比較區：Final ${metric} multi-run boxplot`;let arrN=metric==='IGD'?res.nsgaIGD:res.nsgaHV,arrS=metric==='IGD'?res.speaIGD:res.speaHV;let all=arrN.concat(arrS),max=Math.max(...all),min=Math.min(...all),den=max-min||1;const sy=v=>H-pad-(v-min)/den*(H-pad*1.55),cx=[W*.42,W*.58],labels=['NSGA-II','SPEA2'],cols=['#2563eb','#059669'];
+  ctx.fillStyle='#6b7280';ctx.font='12px system-ui';
+  for(let i=0;i<=5;i++){
+    const hv=min+(max-min)*i/5;
+    const y=sy(hv);
+    ctx.textAlign='right';ctx.fillText(hv.toFixed(3),pad-8,y+4);
+  }
+  ctx.textAlign='left';[arrN,arrS].forEach((arr,k)=>{let q=quartiles(arr),x=cx[k],bw=80;ctx.strokeStyle=cols[k];ctx.fillStyle=cols[k]+'22';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,sy(q.min));ctx.lineTo(x,sy(q.max));ctx.stroke();ctx.fillRect(x-bw/2,sy(q.q3),bw,sy(q.q1)-sy(q.q3));ctx.strokeRect(x-bw/2,sy(q.q3),bw,sy(q.q1)-sy(q.q3));ctx.beginPath();ctx.moveTo(x-bw/2,sy(q.med));ctx.lineTo(x+bw/2,sy(q.med));ctx.stroke();ctx.beginPath();ctx.moveTo(x-25,sy(q.min));ctx.lineTo(x+25,sy(q.min));ctx.moveTo(x-25,sy(q.max));ctx.lineTo(x+25,sy(q.max));ctx.stroke();ctx.fillStyle=cols[k];ctx.font='14px system-ui';ctx.fillText(labels[k],x-35,H-18);ctx.fillStyle='#374151';ctx.fillText('median '+q.med.toFixed(4),x-44,sy(q.med)-8)});ctx.fillStyle='#374151';ctx.font='13px system-ui';ctx.fillText(`Final ${metric}`,18,24)}
+let state=null,batchResult=null,timer=null;
+function reset(){const c=cfg();$('archiveSize').value=c.archiveSize||c.popSize;const rng=new RNG(c.seed),init=makePop(c.popSize,c.dim,rng,c.problem);state={nsga:new NSGA2(init,c,c.seed+11),spea:new SPEA2(init,c,c.seed+22),c};batchResult=null;drawAll('Reset complete：兩種演算法使用同一組 initial population。')}
+function step(){if(!state)reset();const c=cfg();if(state.nsga.gen>=c.maxGen){drawAll('已達最大世代。');return}state.nsga.step();state.spea.step();drawAll(`已同步演化至 generation ${state.nsga.gen}。`)}
+function runEnd(){if(!state)reset();const c=cfg();while(state.nsga.gen<c.maxGen){state.nsga.step();state.spea.step()}drawAll(`單次執行完成：generation ${state.nsga.gen}。`)}
+function setBusy(isBusy){document.querySelectorAll('.action-btn').forEach(b=>b.disabled=isBusy)}
+function openBatchModal(){const c=cfg();$('batchModalText').innerHTML=`目前設定：<br>Population size = <b>${c.popSize}</b><br>Generation number = <b>${c.maxGen}</b><br>Number of runs = <b>${c.runs}</b>`;$('batchModal').style.display='flex'}
+function closeBatchModal(){$('batchModal').style.display='none'}
+function batch(){
+  const c=cfg(),nsHV=[],spHV=[],nsIGD=[],spIGD=[];
+  setBusy(true);
+  $('status').innerHTML=`<span class="mono">批次執行中：pop size ${c.popSize}, generations ${c.maxGen}, runs ${c.runs}。</span>`;
+  setTimeout(()=>{
+    try{
+      for(let r=0;r<c.runs;r++){
+        const rng=new RNG(c.seed+r*1009),init=makePop(c.popSize,c.dim,rng,c.problem),n=new NSGA2(init,c,c.seed+r*1009+11),s=new SPEA2(init,c,c.seed+r*1009+22);
+        for(let g=0;g<c.maxGen;g++){n.step();s.step()}
+        nsHV.push(n.hv[n.hv.length-1]);spHV.push(s.hv[s.hv.length-1]);nsIGD.push(n.igd[n.igd.length-1]);spIGD.push(s.igd[s.igd.length-1]);
+      }
+      batchResult={nsgaHV:nsHV,speaHV:spHV,nsgaIGD:nsIGD,speaIGD:spIGD};drawAll(`批次執行完成：${c.runs} runs，圖形切換為 final ${$('metric').value} boxplot。`);
+    } finally { setBusy(false); }
+  },30);
+}
+function drawAll(msg){const c=cfg();drawScatter($('nsgaCanvas'),state.nsga,'nsga',c);drawScatter($('speaCanvas'),state.spea,'spea',c);const m=$('metric').value;
+$('nsgaInfo').textContent=`gen ${state.nsga.gen}, HV ${state.nsga.hv.at(-1).toFixed(4)}, IGD ${state.nsga.igd.at(-1).toFixed(4)}`;const speaND=nondom(state.spea.archive).length;
+const speaShown=cfg().showArchive?'archive':'population';
+$('speaInfo').textContent=`gen ${state.spea.gen}, HV ${state.spea.hv.at(-1).toFixed(4)}, IGD ${state.spea.igd.at(-1).toFixed(4)}, showing ${speaShown}, archive ND ${speaND}/${state.spea.archive.length}`;$('perfTitle').textContent=batchResult?`效能比較區：Final ${m} multi-run boxplot`:`效能比較區：${m} over generations`;drawPerf();$('metricHint').textContent=m==='IGD'?'IGD: smaller is better':'HV: larger is better';$('status').innerHTML=`<span class="mono">${msg}</span>`;checklist()}
+function checklist(){}
+$('resetBtn').onclick=reset;$('stepBtn').onclick=step;$('runBtn').onclick=runEnd;$('batchBtn').onclick=openBatchModal;$('cancelBatchBtn').onclick=closeBatchModal;$('confirmBatchBtn').onclick=()=>{closeBatchModal();batch()};$('playBtn').onclick=()=>{if(timer){clearInterval(timer);timer=null;drawAll('播放已暫停。');return}timer=setInterval(()=>{if(!state)reset();if(state.nsga.gen>=cfg().maxGen){clearInterval(timer);timer=null;drawAll('播放完成。');return}step()},cfg().speed)};['problem','trailMode','trailN','trailSample','showArchive','metric'].forEach(id=>$(id).addEventListener('change',()=>{if(state)drawAll('視覺化設定已更新。')}));reset();
+</script>
+</body>
+</html>
